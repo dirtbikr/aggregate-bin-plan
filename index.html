@@ -255,6 +255,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
       <div class="vs-new"><div class="vs-lbl">Difference</div><div class="vs-val" id="res-diff">-$10</div><div class="vs-pct" id="res-pct"></div></div>
     </div>
   </div>
+
+  <!-- PROFIT COMPARISON -->
+  <div class="card" style="background:var(--card);margin-top:16px;border:1px solid var(--gray-dd)">
+    <div style="font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--red-l);margin-bottom:14px">Profit Comparison</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div style="flex:1;background:var(--card2);border-radius:10px;padding:14px 10px;text-align:center;border:1px solid var(--gray-dd)">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:4px">Current Profit</div>
+        <div style="font-size:26px;font-weight:900;color:var(--gray);letter-spacing:-1px" id="prof-old">$810</div>
+        <div style="font-size:11px;color:var(--gray-d);margin-top:4px" id="prof-old-yd">$81/yd</div>
+      </div>
+      <div style="flex:1;background:var(--card2);border-radius:10px;padding:14px 10px;text-align:center;border:1px solid var(--gray-dd)">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:4px">New Profit</div>
+        <div style="font-size:26px;font-weight:900;color:var(--white);letter-spacing:-1px" id="prof-new">$766</div>
+        <div style="font-size:11px;color:var(--gray-d);margin-top:4px" id="prof-new-yd">$77/yd</div>
+      </div>
+    </div>
+    <div style="text-align:center;padding:8px;border-radius:8px" id="prof-delta-box">
+      <span style="font-size:15px;font-weight:800" id="prof-delta">-$44</span>
+      <span style="font-size:12px;color:var(--gray);margin-left:6px" id="prof-delta-lbl">per order</span>
+    </div>
+    <div style="font-size:11px;color:var(--gray-d);text-align:center;margin-top:8px">
+      Material cost: <span id="prof-cost-yd">$98</span>/yd &times; <span id="prof-cost-qty">10</span> yd = <span id="prof-cost-total">$980</span>
+    </div>
+  </div>
 </div>
 
 <div class="footer"><strong>Aroostacast</strong> &mdash; Per-Mile Pricing Proposal<br>Built from current price sheet data &bull; 3000 PSI comparisons at zone center distances</div>
@@ -265,10 +289,12 @@ const SF={1:{5:45,4:75,3:105,2:150,1:180},2:{5:60,4:100,3:130,2:185,1:205},3:{5:
 const SA={5:25,4:25,3:50,2:50,1:50};
 const ZM=[{z:1,m:0},{z:2,m:20},{z:3,m:30},{z:4,m:50},{z:5,m:70},{z:6,m:90}];
 let sp=3500;
+const COST={3000:95,3500:98,4000:101,4500:104,5000:107,5500:110};
 
 function slf(z,q){if(q>5)return 0;for(let i=1;i<=5;i++)if(q<=i&&SF[z][i]!==undefined)return SF[z][i]+(SA[i]||0);return 0}
 function ct(z,p,q){return ZP[z][p]*q+slf(z,q)}
 function mc(p){return 159+7*((p-3000)/500)}
+function matCost(p){return COST[p]||95}
 function nt(mi,p,q){return mc(p)*q+3*mi+Math.max(0,6-q)*45}
 function fmt(n){return'$'+Math.round(n).toLocaleString('en-US')}
 function fmtD(n){return'$'+n.toFixed(2)}
@@ -298,6 +324,23 @@ function upd(){
   if(Math.abs(df)<0.01){de.textContent='$0';de.style.color='#fff';pe.textContent='Exact match'}
   else if(df<0){de.textContent='-'+fmt(Math.abs(df));de.style.color='#4ade80';pe.textContent=pc.toFixed(1)+'% less'}
   else{de.textContent='+'+fmt(df);de.style.color='#f87171';pe.textContent=pc.toFixed(1)+'% more'}
+
+  // Profit
+  const costYd=matCost(sp),costTotal=costYd*yd;
+  const profOld=c-costTotal,profNew=t-costTotal,profDiff=profNew-profOld;
+  document.getElementById('prof-old').textContent=fmt(profOld);
+  document.getElementById('prof-new').textContent=fmt(profNew);
+  document.getElementById('prof-old-yd').textContent=fmt(Math.round(profOld/yd))+'/yd';
+  document.getElementById('prof-new-yd').textContent=fmt(Math.round(profNew/yd))+'/yd';
+  document.getElementById('prof-cost-yd').textContent='$'+costYd;
+  document.getElementById('prof-cost-qty').textContent=yd;
+  document.getElementById('prof-cost-total').textContent=fmt(costTotal);
+
+  const pdEl=document.getElementById('prof-delta'),pdBox=document.getElementById('prof-delta-box');
+  const pdLbl=document.getElementById('prof-delta-lbl');
+  if(Math.abs(profDiff)<1){pdEl.textContent='No change';pdEl.style.color='var(--white)';pdBox.style.background='var(--gray-dd)';pdLbl.textContent=''}
+  else if(profDiff>0){pdEl.textContent='+'+fmt(profDiff);pdEl.style.color='#166534';pdBox.style.background='#dcfce7';pdLbl.textContent='more profit per order'}
+  else{pdEl.textContent='-'+fmt(Math.abs(profDiff));pdEl.style.color='var(--red-d)';pdBox.style.background='var(--red-bg)';pdLbl.textContent='less profit per order'}
 }
 
 document.getElementById('loc-picks').innerHTML=[
