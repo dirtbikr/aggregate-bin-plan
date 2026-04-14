@@ -187,11 +187,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('overview',this)">Overview</button>
-  <button class="tab" onclick="showTab('tool',this)">Pricing Tool</button>
+  <button class="tab" onclick="showTab('overview',this)">Overview</button>
+  <button class="tab active" onclick="showTab('tool',this)">Pricing Tool</button>
 </div>
 
-<div class="tab-pane active" id="pane-overview">
+<div class="tab-pane" id="pane-overview">
 
 <!-- THE PROBLEM -->
 <div class="page">
@@ -362,7 +362,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 
 </div><!-- /pane-overview -->
 
-<div class="tab-pane" id="pane-tool">
+<div class="tab-pane active" id="pane-tool">
 
 <div class="tool-intro">
   <h2>Pricing Tool</h2>
@@ -582,6 +582,8 @@ document.getElementById('loc-picks').innerHTML=[
   ['Plant',0],['Caribou',13],['Houlton',42],['Fort Kent',56],['Eagle Lake',70]
 ].map(l=>`<div class="loc-pick" data-miles="${l[1]}" onclick="pl(this)">${l[0]} <span>${l[1]}mi</span></div>`).join('');
 upd();
+// Tool is the default tab, so initialize it on load too
+window.addEventListener('DOMContentLoaded',function(){toolUpd()});
 
 // ============ TABS ============
 function showTab(name,btn){
