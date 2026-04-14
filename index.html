@@ -364,17 +364,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 </div>
 
 <div class="page" style="padding-top:8px">
-  <!-- View format toggle -->
-  <div class="toggle-row">
-    <div class="tg-group">
-      <div class="tg-label">View as</div>
-      <div class="tg-pills" id="tool-fmt">
-        <button class="active" data-fmt="cash" onclick="toolFmt(this)">Cash</button>
-        <button data-fmt="card" onclick="toolFmt(this)">Card</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Order size slider -->
   <div class="slider-card" style="margin:0 16px 14px">
     <div class="slider-head">
@@ -598,10 +587,7 @@ const TOOL_LOCS=[
   ['Van Buren',35,3],['Houlton',42,4],['Winterville',45,4],['Fort Kent',56,4],
   ['Madawaska',62,4],['Eagle Lake',70,5],['Allagash',105,6]
 ];
-const CARD_MARKUP=1.035;
-let toolState={yd:10,fmt:'cash',mat:165,pm:3.00,thr:6,slc:45};
-
-function toolFmt(btn){document.querySelectorAll('#tool-fmt button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');toolState.fmt=btn.dataset.fmt;toolUpd()}
+let toolState={yd:10,mat:165,pm:3.00,thr:6,slc:45};
 
 function toolPriceCash(loc){
   const yd=toolState.yd,mi=loc[1];
@@ -616,7 +602,6 @@ function toolCurrentPrice(loc){
   return ZP[loc[2]][3500]*toolState.yd+slf(loc[2],toolState.yd);
 }
 
-function toolDisplay(p){return toolState.fmt==='card'?p*CARD_MARKUP:p}
 
 function toolUpd(){
   toolState.yd=parseInt(document.getElementById('t-yd').value);
@@ -634,8 +619,8 @@ function toolUpd(){
   // Calculate all locations
   let rows='',sumDelta=0,bigUp={d:-Infinity,n:''},bigDn={d:Infinity,n:''};
   for(const loc of TOOL_LOCS){
-    const cur=toolDisplay(toolCurrentPrice(loc));
-    const nw=toolDisplay(toolPriceCash(loc));
+    const cur=toolCurrentPrice(loc);
+    const nw=toolPriceCash(loc);
     const delta=nw-cur;
     const deltaPerYd=delta/toolState.yd;
     sumDelta+=deltaPerYd;
