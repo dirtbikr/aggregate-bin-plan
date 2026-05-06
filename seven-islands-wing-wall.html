@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Seven Islands Wing Wall — 22' face × 12' wings @ 45° × 4' H</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #1a202c;
+    touch-action: none;
+    color-scheme: light;
+  }
+  canvas { display: block; }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  #header h1 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: #1a202c; }
+  #header .dims { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  #header .stack { margin-left: auto; font-size: 11px; color: #718096; font-family: 'SF Mono', Menlo, monospace; }
+
+  .panel {
+    position: fixed;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.05);
+  }
+
+  #legend { top: 60px; right: 12px; min-width: 230px; max-width: 290px; }
+  #controls { bottom: 12px; left: 12px; max-width: 320px; }
+  #cameraBtns { bottom: 12px; right: 12px; }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #718096;
+    margin-bottom: 10px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .legend-color {
+    width: 28px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.12);
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18);
+  }
+  .legend-label { flex: 1; color: #2d3748; }
+  .legend-count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .legend-total .label { color: #4a5568; }
+  .legend-total .count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn-row { margin-top: 6px; }
+
+  .btn {
+    background: rgba(15,23,42,0.04);
+    border: 1px solid rgba(15,23,42,0.1);
+    color: #2d3748;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-family: inherit;
+    min-height: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(15,23,42,0.08); border-color: rgba(15,23,42,0.15); }
+  .btn:active { transform: scale(0.97); }
+  .btn.active {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: white;
+  }
+  .btn.active:hover { background: #1d4ed8; }
+
+  #tooltip {
+    position: fixed;
+    background: rgba(15,23,42,0.95);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 200;
+    transform: translate(12px, -32px);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 768px) {
+    #header h1 { font-size: 13px; }
+    #header .dims { font-size: 11px; }
+    #header .stack { display: none; }
+    #legend { top: 56px; right: 8px; min-width: 0; max-width: 50%; padding: 10px; }
+    #legend .legend-row { font-size: 11px; padding: 3px 0; gap: 8px; }
+    #legend .legend-color { width: 22px; height: 12px; }
+    #legend .legend-label { font-size: 11px; }
+    #controls { bottom: 8px; left: 8px; right: 8px; max-width: none; padding: 10px; }
+    #cameraBtns {
+      top: 56px;
+      bottom: auto;
+      right: auto;
+      left: 8px;
+      padding: 8px;
+    }
+    .btn { font-size: 11px; padding: 7px 8px; min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Seven Islands Wing Wall</h1>
+  <div class="dims" id="dimsLabel">22' face · 12' wings @ 45° back · 4' H</div>
+  <div class="stack">2 courses · End blocks stack at face corners · running bond</div>
+</div>
+
+<div id="legend" class="panel">
+  <div class="panel-title">Block Counts</div>
+  <div id="legendBody"></div>
+</div>
+
+<div id="controls" class="panel">
+  <div class="panel-title">View</div>
+  <div class="toggle-row">
+    <button class="btn active" data-course="0">C1 Bottom</button>
+    <button class="btn active" data-course="1">C2 Top</button>
+  </div>
+  <div class="toggle-row btn-row">
+    <button class="btn active" data-section="wing-W">Wing W</button>
+    <button class="btn active" data-section="face">Face</button>
+    <button class="btn active" data-section="wing-E">Wing E</button>
+  </div>
+  <div class="toggle-row btn-row">
+    <button class="btn active" data-face="22">22′ Face</button>
+    <button class="btn" data-face="18">18′ Face</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="explodeToggle">Explode</button>
+    <button class="btn" id="resetToggle">Reset</button>
+  </div>
+</div>
+
+<div id="cameraBtns" class="panel">
+  <div class="panel-title">Camera</div>
+  <div class="btn-row">
+    <button class="btn active" data-view="iso">Iso</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" data-view="front">Front</button>
+    <button class="btn" data-view="side">Side</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// CONFIG
+// ============================================================
+// Coordinate system:
+//   Origin = ground level, center of the face wall's front edge.
+//   +X east along face, -X west along face
+//   +Y up
+//   +Z back / embankment side, -Z open / road side
+// Face wall: world X ∈ [-11, +11], Z ∈ [0, 2]. Block centers at z = 1.
+// Each face corner has a half-cylinder pivot at (±10, _, 1), radius 1, formed
+// by the rounded protrusion of the End block. Wings extend from the pivot at
+// 45° back, each 12 ft along its axis from the tangent point.
+
+const COURSE_H = 2;       // each course is 2 ft tall
+const WALL_T   = 2;       // wall thickness / block depth (ft)
+const EXPLODE_GAP = 3;
+
+const SQ = Math.SQRT1_2;                          // sin/cos of 45°
+const EAST_AXIS = { x:  SQ, z: SQ };
+const WEST_AXIS = { x: -SQ, z: SQ };
+// Pivots depend on face length (toggleable: 22 ft → ±10, 18 ft → ±8). The
+// face/wing helpers and footprint code read .x/.z, so we mutate in place.
+let faceLength = 22;
+const E_PIVOT   = { x: 0, z: 1 };
+const W_PIVOT   = { x: 0, z: 1 };
+const E_TANGENT = { x: 0, z: 0 };
+const W_TANGENT = { x: 0, z: 0 };
+function updatePivots() {
+  const px = faceLength / 2 - 1;        // pivot is 1 ft inside the protrusion tip
+  E_PIVOT.x =  px;  W_PIVOT.x = -px;
+  E_TANGENT.x = E_PIVOT.x + EAST_AXIS.x;
+  E_TANGENT.z = E_PIVOT.z + EAST_AXIS.z;
+  W_TANGENT.x = W_PIVOT.x + WEST_AXIS.x;
+  W_TANGENT.z = W_PIVOT.z + WEST_AXIS.z;
+}
+updatePivots();
+
+// UI state — hoisted so buildWall() can re-apply it after rebuilding meshes.
+const state = {
+  exploded: false,
+  courseVisible: [true, true],
+  sectionVisible: { 'face': true, 'wing-W': true, 'wing-E': true },
+};
+
+// Soft pastel palette for block lengths, with End block in slate.
+const COLORS = {
+  end6: 0x9aa6b4, reg6: 0x7ba7d9, reg5: 0x6dd3c4,
+  reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
+};
+const TYPE_NAMES = {
+  end6: "6′ End (rounded)",
+  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton",
+  reg3: "3′ Beton", reg2: "2′ Beton",
+};
+const TYPE_WIDTH = { end6: 6, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2 };
+
+// ============================================================
+// WALL LAYOUT — edit here to change the wall
+// ============================================================
+// Helpers below build BLOCKS[] entries. Conventions:
+//   face(type, x, course)            x is the world-X center of the block
+//   wing(type, side, distFromTangent, course)   distance along wing from the tangent point
+//   course: 0 = bottom, 1 = top
+// End blocks at face corners auto-orient: x<0 ⇒ rounded toward -X, x>0 ⇒ +X.
+
+const BLOCKS = [];
+function face(type, x, course) {
+  const ry = (type === 'end6' && x < 0) ? Math.PI : 0;
+  BLOCKS.push({ type, x, y: course * COURSE_H + COURSE_H/2, z: 1, ry, course, section: 'face' });
+}
+function wing(type, side, distFromTangent, course) {
+  const axis    = (side === 'E') ? EAST_AXIS : WEST_AXIS;
+  const tangent = (side === 'E') ? E_TANGENT : W_TANGENT;
+  // Regular blocks: local +X points down the wing (away from pivot).
+  // End blocks: rotated 180° so local +X points back at the pivot — the flat
+  // short end faces the wing tip, the rounded end seats at the pivot.
+  const isEnd = type === 'end6';
+  const ry = (side === 'E')
+    ? (isEnd ?  3*Math.PI/4 : -Math.PI/4)
+    : (isEnd ?    Math.PI/4 : -3*Math.PI/4);
+  BLOCKS.push({
+    type,
+    x: tangent.x + distFromTangent * axis.x,
+    y: course * COURSE_H + COURSE_H/2,
+    z: tangent.z + distFromTangent * axis.z,
+    ry, course, section: `wing-${side}`,
+  });
+}
+
+function populateLayout() {
+  BLOCKS.length = 0;
+
+  // ───── COURSE 1 (bottom) — End blocks at face corners ─────
+  if (faceLength === 22) {
+    face('end6', -8,   0);
+    face('reg5', -2.5, 0);
+    face('reg5',  2.5, 0);
+    face('end6',  8,   0);
+  } else {  // 18 ft: [End6][reg6][End6]; inner joints at world ±3
+    face('end6', -6, 0);
+    face('reg6',  0, 0);
+    face('end6',  6, 0);
+  }
+
+  // Wings (same for both face lengths): two 6′ blocks, joint 6 ft from tangent.
+  wing('reg6', 'W', 3, 0);
+  wing('reg6', 'W', 9, 0);
+  wing('reg6', 'E', 3, 0);
+  wing('reg6', 'E', 9, 0);
+
+  // ───── COURSE 2 (top) — End blocks on the wings, flat ends down-wing ─────
+  // C2 corner is the wing's first block: a 6′ End with flat short end pointing
+  // toward the wing tip and rounded end (arc center) seated at the pivot. With
+  // the cone stud at the arc axis, the C2 cone lands directly above C1's — one
+  // vertical column of cones per pivot.
+  //   distFromTangent = 1 puts the arc center exactly on the pivot. Flat short
+  //   end sits 4 ft beyond the tangent point; rounded tip extends 1 ft past
+  //   the pivot toward the face.
+  // C2 face: maximize 6′ blocks for fewer seams. Outer-block edges still land
+  // 1 ft inside each pivot so the wing End block's half-disc just kisses the
+  // corner block instead of cutting into it.
+  if (faceLength === 22) {
+    // [reg6][reg6][reg6] — joints at world ±3 (2–3 ft off C1's ±5 and 0)
+    face('reg6', -6, 1);
+    face('reg6',  0, 1);
+    face('reg6',  6, 1);
+  } else {
+    // 18 ft: [reg6][reg2][reg6] — joints at world ±1 (2 ft off C1's ±3)
+    face('reg6', -4, 1);
+    face('reg2',  0, 1);
+    face('reg6',  4, 1);
+  }
+
+  // Wings: End6 + reg4 + reg4. Joints at 4 and 8 ft from tangent —
+  // half-block offset from C1's mid-wing joint at 6 ft.
+  wing('end6', 'W', 1,  1);   // arc center seats at the pivot
+  wing('reg4', 'W', 6,  1);
+  wing('reg4', 'W', 10, 1);
+  wing('end6', 'E', 1,  1);
+  wing('reg4', 'E', 6,  1);
+  wing('reg4', 'E', 10, 1);
+}
+
+// ============================================================
+// BLOCK GEOMETRY
+// ============================================================
+
+// Debossed AROOSTA CAST normal map for the long faces of regular blocks.
+function createTextTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = 'bold 70px "Arial Black", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const text = 'AROOSTA CAST';
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  for (let i = 5; i >= 0; i--) {
+    const shade = 90 + i * 8;
+    ctx.fillStyle = `rgb(${shade}, ${shade}, 255)`;
+    ctx.fillText(text, cx + i * 0.5, cy + i * 0.5);
+  }
+  ctx.fillStyle = 'rgb(80, 80, 255)';
+  ctx.fillText(text, cx, cy);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+const textTexture = createTextTexture();
+
+// 4-sided pyramid frustum stud (one per foot of width, two rows).
+const STUD_TOP_R  = 2.5 / 12 / 2;        // top dia 2.5"
+const STUD_BOT_R  = 5.5 / 12 / 2;        // bottom dia 5.5"
+const STUD_H      = 0.15;                // ~2"
+const studGeo     = new THREE.CylinderGeometry(STUD_TOP_R, STUD_BOT_R, STUD_H, 4, 1, false, Math.PI/4);
+const studMat     = new THREE.MeshPhongMaterial({ color: 0x7a8696, flatShading: true });
+const studEdgeGeo = new THREE.EdgesGeometry(studGeo);
+
+function makePyramidStud(x, z) {
+  const stud = new THREE.Mesh(studGeo, studMat);
+  stud.position.set(x, STUD_H/2, z);
+  stud.castShadow = true;
+  stud.receiveShadow = true;
+  stud.add(new THREE.LineSegments(studEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })));
+  return stud;
+}
+
+// Studs for a regular block: pyramid frustums on a 1 ft grid, two rows 6" from edge.
+function createStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < Math.floor(width); i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  return group;
+}
+
+// Studs for an End block: 4 pyramid studs in the straight section, plus the
+// big cone stud at the rounded end (the corner pivot).
+const ROUND_STUD_TOP_R = 8.5 / 12 / 2;   // 8.5" dia at top
+const ROUND_STUD_BOT_R = 1.0 / 2;        // 1 ft dia at base
+const ROUND_STUD_H     = 0.25;           // ~3"
+const roundStudGeo     = new THREE.CylinderGeometry(ROUND_STUD_TOP_R, ROUND_STUD_BOT_R, ROUND_STUD_H, 16, 1);
+const roundStudEdgeGeo = new THREE.EdgesGeometry(roundStudGeo);
+
+function createEndStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < 4; i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  // Big cone stud: centered exactly on the arc axis of the rounded protrusion
+  // (local x = width/2 - depth/2). This is the pivot axis, so any orientation
+  // of an End block placed at the same pivot puts its cone in the same world
+  // (x, z) — the cones stack as a single vertical column up the corner.
+  const roundStud = new THREE.Mesh(roundStudGeo, studMat);
+  roundStud.position.set(width/2 - depth/2, ROUND_STUD_H/2, 0);
+  roundStud.castShadow = true;
+  roundStud.receiveShadow = true;
+  roundStud.add(new THREE.LineSegments(
+    roundStudEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })
+  ));
+  group.add(roundStud);
+  return group;
+}
+
+// Extruded geometry for the End block — flat back/sides on -X, rounded
+// half-cylinder protrusion on +X. Centered on local origin in all three axes,
+// so block.position = block center.
+function createEndGeometry(width, height, depth) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width/2, -height/2);
+  shape.lineTo(width/2 - depth/2, -height/2);
+  shape.absarc(width/2 - depth/2, 0, depth/2, -Math.PI/2, Math.PI/2, false);
+  shape.lineTo(-width/2, height/2);
+  shape.lineTo(-width/2, -height/2);
+
+  const geo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(
+    -(bb.min.x + bb.max.x) / 2,
+    -(bb.min.y + bb.max.y) / 2,
+    -(bb.min.z + bb.max.z) / 2
+  );
+  return geo;
+}
+
+// Build a single block mesh from a spec.
+const allBlocks = [];
+function createBlockMesh(spec) {
+  const width = TYPE_WIDTH[spec.type];
+  const isEnd = spec.type === 'end6';
+  const color = COLORS[spec.type];
+  let geo, materials;
+
+  if (isEnd) {
+    geo = createEndGeometry(width, COURSE_H, WALL_T);
+    materials = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+  } else {
+    geo = new THREE.BoxGeometry(width, COURSE_H, WALL_T);
+    // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z. Apply debossed text to
+    // the four side faces (±X long ends + ±Z front/back).
+    materials = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+      if (i === 0 || i === 1 || i === 4 || i === 5) {
+        const tex = textTexture.clone();
+        tex.center.set(0, 0);
+        tex.repeat.set(1.5, 1.5);
+        const off = (1.5 - 1) / (2 * 1.5);
+        tex.offset.set(off, off);
+        tex.needsUpdate = true;
+        m.normalMap = tex;
+        m.normalScale = new THREE.Vector2(2.2, -2.2);
+      }
+      materials.push(m);
+    }
+  }
+
+  const mesh = new THREE.Mesh(geo, materials);
+  mesh.position.set(spec.x, spec.y, spec.z);
+  mesh.rotation.y = spec.ry;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { spec };
+
+  const studs = isEnd
+    ? createEndStudsGroup(width, WALL_T)
+    : createStudsGroup(width, WALL_T);
+  studs.position.y = COURSE_H / 2;
+  mesh.add(studs);
+
+  mesh.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x1a202c, transparent: true, opacity: 0.78 })
+  ));
+
+  allBlocks.push(mesh);
+  return mesh;
+}
+
+// ============================================================
+// SCENE
+// ============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef2f7);
+scene.fog = new THREE.Fog(0xeef2f7, 100, 320);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 600);
+const targetPoint = new THREE.Vector3(0, 2, 4.5);
+camera.position.set(42, 30, 44);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.78);
+dirLight.position.set(25, 60, 35);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -30;
+dirLight.shadow.camera.right = 30;
+dirLight.shadow.camera.top = 30;
+dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 130;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xb8d4f0, 0.32);
+fillLight.position.set(-25, 25, -10);
+scene.add(fillLight);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshLambertMaterial({ color: 0xdce3eb })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(60, 30, 0x94a3b8, 0xc4cdd6);
+grid.position.set(0, 0, 4);
+grid.material.opacity = 0.6;
+grid.material.transparent = true;
+scene.add(grid);
+
+// Footprint outlines on ground. Tracked so they can be rebuilt on toggle.
+const footprintObjects = [];
+function addFootprint(geo, x, z, ry = 0) {
+  const o = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x475569 })
+  );
+  o.position.set(x, 0.01, z);
+  o.rotation.y = ry;
+  scene.add(o);
+  footprintObjects.push(o);
+}
+function populateFootprints() {
+  footprintObjects.forEach(o => scene.remove(o));
+  footprintObjects.length = 0;
+  addFootprint(new THREE.BoxGeometry(faceLength, 0.02, WALL_T), 0, 1);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T),
+    E_TANGENT.x + 6 * EAST_AXIS.x, E_TANGENT.z + 6 * EAST_AXIS.z, -Math.PI/4);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T),
+    W_TANGENT.x + 6 * WEST_AXIS.x, W_TANGENT.z + 6 * WEST_AXIS.z, -3*Math.PI/4);
+}
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(targetPoint);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 6;
+controls.maxDistance = 200;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.update();
+
+// Build the wall. buildWall() is also called from the face-length toggle.
+const courseGroups = [new THREE.Group(), new THREE.Group()];
+courseGroups.forEach(g => scene.add(g));
+
+function buildWall() {
+  updatePivots();
+  courseGroups.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
+  allBlocks.length = 0;
+  populateLayout();
+  BLOCKS.forEach(spec => courseGroups[spec.course].add(createBlockMesh(spec)));
+  populateFootprints();
+  updateLegend();
+  applyVisibility();
+  updateLayout();
+  document.getElementById('dimsLabel').textContent =
+    `${faceLength}′ face · 12′ wings @ 45° back · 4′ H`;
+}
+buildWall();
+
+// ============================================================
+// UI: legend, toggles, camera, tooltip
+// ============================================================
+function updateLegend() {
+  const counts = {};
+  BLOCKS.forEach(b => { counts[b.type] = (counts[b.type] || 0) + 1; });
+  const order = ['end6', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
+  let html = '', total = 0;
+  order.forEach(k => {
+    if (!counts[k]) return;
+    total += counts[k];
+    const colorHex = '#' + COLORS[k].toString(16).padStart(6, '0');
+    html += `
+      <div class="legend-row">
+        <div class="legend-color" style="background:${colorHex}"></div>
+        <div class="legend-label">${TYPE_NAMES[k]}</div>
+        <div class="legend-count">${counts[k]}</div>
+      </div>`;
+  });
+  html += `
+    <div class="legend-total">
+      <span class="label">Total blocks</span>
+      <span class="count">${total}</span>
+    </div>`;
+  document.getElementById('legendBody').innerHTML = html;
+}
+
+function updateLayout() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
+  }
+}
+function applyVisibility() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].children.forEach(mesh => {
+      const s = mesh.userData.spec;
+      if (!s) return;
+      mesh.visible = state.courseVisible[s.course] && state.sectionVisible[s.section];
+    });
+  }
+}
+
+document.querySelectorAll('[data-face]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const newLength = parseInt(e.currentTarget.dataset.face);
+    if (newLength === faceLength) return;
+    faceLength = newLength;
+    document.querySelectorAll('[data-face]').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    buildWall();
+  });
+});
+
+document.querySelectorAll('[data-course]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const i = parseInt(e.currentTarget.dataset.course);
+    state.courseVisible[i] = !state.courseVisible[i];
+    e.currentTarget.classList.toggle('active', state.courseVisible[i]);
+    applyVisibility();
+  });
+});
+document.querySelectorAll('[data-section]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const key = e.currentTarget.dataset.section;
+    state.sectionVisible[key] = !state.sectionVisible[key];
+    e.currentTarget.classList.toggle('active', state.sectionVisible[key]);
+    applyVisibility();
+  });
+});
+document.getElementById('explodeToggle').addEventListener('click', e => {
+  state.exploded = !state.exploded;
+  e.currentTarget.classList.toggle('active', state.exploded);
+  updateLayout();
+});
+document.getElementById('resetToggle').addEventListener('click', () => {
+  state.exploded = false;
+  document.getElementById('explodeToggle').classList.remove('active');
+  state.courseVisible = [true, true];
+  state.sectionVisible = { 'face': true, 'wing-W': true, 'wing-E': true };
+  document.querySelectorAll('[data-course], [data-section]').forEach(b => b.classList.add('active'));
+  applyVisibility();
+  animateCamera(presets.iso);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-view="iso"]').classList.add('active');
+  updateLayout();
+});
+
+const presets = {
+  iso:   { pos: new THREE.Vector3(42, 30,  44),    target: new THREE.Vector3(0, 2, 4.5) },
+  top:   { pos: new THREE.Vector3( 0, 65, 4.501),  target: new THREE.Vector3(0, 0, 4.5) },
+  front: { pos: new THREE.Vector3( 0,  8, -32),    target: new THREE.Vector3(0, 2, 1)   },
+  side:  { pos: new THREE.Vector3(50,  8, 4.5),    target: new THREE.Vector3(0, 2, 4.5) },
+};
+function animateCamera(preset, duration = 600) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const startTime = performance.now();
+  function step() {
+    const t = Math.min((performance.now() - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(startPos, preset.pos, eased);
+    controls.target.lerpVectors(startTarget, preset.target, eased);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    animateCamera(presets[e.currentTarget.dataset.view]);
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+  });
+});
+
+// Hover tooltip (desktop only).
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let isTouch = false;
+window.addEventListener('touchstart', () => { isTouch = true; }, { once: true });
+
+function findBlockAncestor(o) {
+  while (o && !o.userData?.spec) o = o.parent;
+  return o;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+  if (isTouch) return;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(allBlocks, true);
+  if (intersects.length > 0) {
+    const block = findBlockAncestor(intersects[0].object);
+    if (block && block.visible) {
+      const s = block.userData.spec;
+      const sectionLabel =
+        s.section === 'face'   ? 'Face' :
+        s.section === 'wing-W' ? 'West Wing' : 'East Wing';
+      tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${sectionLabel} · C${s.course + 1}`;
+      tooltip.style.left = e.clientX + 'px';
+      tooltip.style.top = e.clientY + 'px';
+      tooltip.style.display = 'block';
+      return;
+    }
+  }
+  tooltip.style.display = 'none';
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+  tooltip.style.display = 'none';
+});
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
+
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+</body>
+</html>
