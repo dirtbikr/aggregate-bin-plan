@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Seven Islands Wing Wall — 22' face × 12' wings @ 45° × 4' H</title>
+<title>Seven Islands Wing Walls — 18' face × 12' wings × 4' H · 15' face-to-face</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -152,9 +152,9 @@
 <body>
 
 <div id="header">
-  <h1>Seven Islands Wing Wall</h1>
-  <div class="dims" id="dimsLabel">22' face · 12' wings @ 45° back · 4' H</div>
-  <div class="stack">2 courses · End blocks stack at face corners · running bond</div>
+  <h1>Seven Islands Wing Walls</h1>
+  <div class="dims" id="dimsLabel">18' face · 12' wings @ 45° back · 4' H · 15' face-to-face</div>
+  <div class="stack">2 courses · two opposing walls · running bond</div>
 </div>
 
 <div id="legend" class="panel">
@@ -172,10 +172,6 @@
     <button class="btn active" data-section="wing-W">Wing W</button>
     <button class="btn active" data-section="face">Face</button>
     <button class="btn active" data-section="wing-E">Wing E</button>
-  </div>
-  <div class="toggle-row btn-row">
-    <button class="btn active" data-face="22">22′ Face</button>
-    <button class="btn" data-face="18">18′ Face</button>
   </div>
   <div class="btn-row">
     <button class="btn" id="explodeToggle">Explode</button>
@@ -212,25 +208,28 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // CONFIG
 // ============================================================
 // Coordinate system:
-//   Origin = ground level, center of the face wall's front edge.
+//   Origin = ground level, center of wall A's face front edge.
 //   +X east along face, -X west along face
 //   +Y up
-//   +Z back / embankment side, -Z open / road side
-// Face wall: world X ∈ [-11, +11], Z ∈ [0, 2]. Block centers at z = 1.
-// Each face corner has a half-cylinder pivot at (±10, _, 1), radius 1, formed
+//   +Z back / embankment side of wall A
+// Wall A face: world X ∈ [-9, +9], Z ∈ [0, 2]. Block centers at z = 1.
+// Wall B face: same X range, Z ∈ [-17, -15]. Block centers at z = -16.
+//   Wall B is wall A rotated 180° about y through midplane z = -7.5, so the
+//   two faces look at each other across a 15 ft gap and the wings flare
+//   outward (wall A wings to +Z, wall B wings to -Z).
+// Each face corner has a half-cylinder pivot at (±8, _, _), radius 1, formed
 // by the rounded protrusion of the End block. Wings extend from the pivot at
 // 45° back, each 12 ft along its axis from the tangent point.
 
 const COURSE_H = 2;       // each course is 2 ft tall
 const WALL_T   = 2;       // wall thickness / block depth (ft)
 const EXPLODE_GAP = 3;
+const WALL_GAP = 15;      // face-to-face distance between wall A and wall B
 
 const SQ = Math.SQRT1_2;                          // sin/cos of 45°
 const EAST_AXIS = { x:  SQ, z: SQ };
 const WEST_AXIS = { x: -SQ, z: SQ };
-// Pivots depend on face length (toggleable: 22 ft → ±10, 18 ft → ±8). The
-// face/wing helpers and footprint code read .x/.z, so we mutate in place.
-let faceLength = 22;
+const faceLength = 18;
 const E_PIVOT   = { x: 0, z: 1 };
 const W_PIVOT   = { x: 0, z: 1 };
 const E_TANGENT = { x: 0, z: 0 };
@@ -300,46 +299,27 @@ function wing(type, side, distFromTangent, course) {
 function populateLayout() {
   BLOCKS.length = 0;
 
-  // ───── COURSE 1 (bottom) — End blocks at face corners ─────
-  if (faceLength === 22) {
-    face('end6', -8,   0);
-    face('reg5', -2.5, 0);
-    face('reg5',  2.5, 0);
-    face('end6',  8,   0);
-  } else {  // 18 ft: [End6][reg6][End6]; inner joints at world ±3
-    face('end6', -6, 0);
-    face('reg6',  0, 0);
-    face('end6',  6, 0);
-  }
+  // ───── WALL A — COURSE 1 (bottom) ─────
+  // 18 ft face: [End6][reg6][End6]; inner joints at world ±3.
+  face('end6', -6, 0);
+  face('reg6',  0, 0);
+  face('end6',  6, 0);
 
-  // Wings (same for both face lengths): two 6′ blocks, joint 6 ft from tangent.
+  // Wings: two 6′ blocks, joint 6 ft from tangent.
   wing('reg6', 'W', 3, 0);
   wing('reg6', 'W', 9, 0);
   wing('reg6', 'E', 3, 0);
   wing('reg6', 'E', 9, 0);
 
-  // ───── COURSE 2 (top) — End blocks on the wings, flat ends down-wing ─────
+  // ───── WALL A — COURSE 2 (top) ─────
   // C2 corner is the wing's first block: a 6′ End with flat short end pointing
   // toward the wing tip and rounded end (arc center) seated at the pivot. With
   // the cone stud at the arc axis, the C2 cone lands directly above C1's — one
   // vertical column of cones per pivot.
-  //   distFromTangent = 1 puts the arc center exactly on the pivot. Flat short
-  //   end sits 4 ft beyond the tangent point; rounded tip extends 1 ft past
-  //   the pivot toward the face.
-  // C2 face: maximize 6′ blocks for fewer seams. Outer-block edges still land
-  // 1 ft inside each pivot so the wing End block's half-disc just kisses the
-  // corner block instead of cutting into it.
-  if (faceLength === 22) {
-    // [reg6][reg6][reg6] — joints at world ±3 (2–3 ft off C1's ±5 and 0)
-    face('reg6', -6, 1);
-    face('reg6',  0, 1);
-    face('reg6',  6, 1);
-  } else {
-    // 18 ft: [reg6][reg2][reg6] — joints at world ±1 (2 ft off C1's ±3)
-    face('reg6', -4, 1);
-    face('reg2',  0, 1);
-    face('reg6',  4, 1);
-  }
+  // 18 ft face: [reg6][reg2][reg6] — joints at world ±1 (2 ft off C1's ±3).
+  face('reg6', -4, 1);
+  face('reg2',  0, 1);
+  face('reg6',  4, 1);
 
   // Wings: End6 + reg4 + reg4. Joints at 4 and 8 ft from tangent —
   // half-block offset from C1's mid-wing joint at 6 ft.
@@ -349,6 +329,23 @@ function populateLayout() {
   wing('end6', 'E', 1,  1);
   wing('reg4', 'E', 6,  1);
   wing('reg4', 'E', 10, 1);
+
+  // ───── WALL B — wall A rotated 180° about y through midplane z = -WALL_GAP/2 ─────
+  // x → -x, z → -WALL_GAP - z, ry → ry + π. Section labels swap so wing-W stays
+  // at world -X and wing-E stays at world +X for both walls.
+  const wallACount = BLOCKS.length;
+  for (let i = 0; i < wallACount; i++) {
+    const a = BLOCKS[i];
+    BLOCKS.push({
+      ...a,
+      x: -a.x,
+      z: -WALL_GAP - a.z,
+      ry: a.ry + Math.PI,
+      section: a.section === 'wing-W' ? 'wing-E'
+             : a.section === 'wing-E' ? 'wing-W'
+             : a.section,
+    });
+  }
 }
 
 // ============================================================
@@ -528,8 +525,8 @@ scene.background = new THREE.Color(0xeef2f7);
 scene.fog = new THREE.Fog(0xeef2f7, 100, 320);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 600);
-const targetPoint = new THREE.Vector3(0, 2, 4.5);
-camera.position.set(42, 30, 44);
+const targetPoint = new THREE.Vector3(0, 2, -WALL_GAP / 2);
+camera.position.set(50, 36, 55);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -547,12 +544,12 @@ dirLight.position.set(25, 60, 35);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
-dirLight.shadow.camera.left = -30;
-dirLight.shadow.camera.right = 30;
-dirLight.shadow.camera.top = 30;
-dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.camera.left = -50;
+dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50;
+dirLight.shadow.camera.bottom = -50;
 dirLight.shadow.camera.near = 1;
-dirLight.shadow.camera.far = 130;
+dirLight.shadow.camera.far = 160;
 dirLight.shadow.bias = -0.0005;
 scene.add(dirLight);
 
@@ -569,8 +566,8 @@ ground.position.y = -0.02;
 ground.receiveShadow = true;
 scene.add(ground);
 
-const grid = new THREE.GridHelper(60, 30, 0x94a3b8, 0xc4cdd6);
-grid.position.set(0, 0, 4);
+const grid = new THREE.GridHelper(80, 40, 0x94a3b8, 0xc4cdd6);
+grid.position.set(0, 0, -WALL_GAP / 2);
 grid.material.opacity = 0.6;
 grid.material.transparent = true;
 scene.add(grid);
@@ -590,11 +587,21 @@ function addFootprint(geo, x, z, ry = 0) {
 function populateFootprints() {
   footprintObjects.forEach(o => scene.remove(o));
   footprintObjects.length = 0;
+
+  const wingE_x = E_TANGENT.x + 6 * EAST_AXIS.x;
+  const wingE_z = E_TANGENT.z + 6 * EAST_AXIS.z;
+  const wingW_x = W_TANGENT.x + 6 * WEST_AXIS.x;
+  const wingW_z = W_TANGENT.z + 6 * WEST_AXIS.z;
+
+  // Wall A
   addFootprint(new THREE.BoxGeometry(faceLength, 0.02, WALL_T), 0, 1);
-  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T),
-    E_TANGENT.x + 6 * EAST_AXIS.x, E_TANGENT.z + 6 * EAST_AXIS.z, -Math.PI/4);
-  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T),
-    W_TANGENT.x + 6 * WEST_AXIS.x, W_TANGENT.z + 6 * WEST_AXIS.z, -3*Math.PI/4);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T), wingE_x, wingE_z, -Math.PI/4);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T), wingW_x, wingW_z, -3*Math.PI/4);
+
+  // Wall B (mirror of A across z = -WALL_GAP/2)
+  addFootprint(new THREE.BoxGeometry(faceLength, 0.02, WALL_T), 0, -WALL_GAP - 1);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T), -wingE_x, -WALL_GAP - wingE_z, 3*Math.PI/4);
+  addFootprint(new THREE.BoxGeometry(12, 0.02, WALL_T), -wingW_x, -WALL_GAP - wingW_z,   Math.PI/4);
 }
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -620,8 +627,6 @@ function buildWall() {
   updateLegend();
   applyVisibility();
   updateLayout();
-  document.getElementById('dimsLabel').textContent =
-    `${faceLength}′ face · 12′ wings @ 45° back · 4′ H`;
 }
 buildWall();
 
@@ -667,17 +672,6 @@ function applyVisibility() {
   }
 }
 
-document.querySelectorAll('[data-face]').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const newLength = parseInt(e.currentTarget.dataset.face);
-    if (newLength === faceLength) return;
-    faceLength = newLength;
-    document.querySelectorAll('[data-face]').forEach(b => b.classList.remove('active'));
-    e.currentTarget.classList.add('active');
-    buildWall();
-  });
-});
-
 document.querySelectorAll('[data-course]').forEach(btn => {
   btn.addEventListener('click', e => {
     const i = parseInt(e.currentTarget.dataset.course);
@@ -713,10 +707,10 @@ document.getElementById('resetToggle').addEventListener('click', () => {
 });
 
 const presets = {
-  iso:   { pos: new THREE.Vector3(42, 30,  44),    target: new THREE.Vector3(0, 2, 4.5) },
-  top:   { pos: new THREE.Vector3( 0, 65, 4.501),  target: new THREE.Vector3(0, 0, 4.5) },
-  front: { pos: new THREE.Vector3( 0,  8, -32),    target: new THREE.Vector3(0, 2, 1)   },
-  side:  { pos: new THREE.Vector3(50,  8, 4.5),    target: new THREE.Vector3(0, 2, 4.5) },
+  iso:   { pos: new THREE.Vector3(50, 36,  55),     target: new THREE.Vector3(0, 2, -WALL_GAP/2) },
+  top:   { pos: new THREE.Vector3( 0, 85, -7.499),  target: new THREE.Vector3(0, 0, -WALL_GAP/2) },
+  front: { pos: new THREE.Vector3( 0, 10, -55),     target: new THREE.Vector3(0, 2, -WALL_GAP/2) },
+  side:  { pos: new THREE.Vector3(60,  8, -7.5),    target: new THREE.Vector3(0, 2, -WALL_GAP/2) },
 };
 function animateCamera(preset, duration = 600) {
   const startPos = camera.position.clone();
