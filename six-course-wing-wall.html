@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Six-Course Wing Wall — Course 1 (24' face, two blocks wide)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #1a202c;
+    touch-action: none;
+    color-scheme: light;
+  }
+  canvas { display: block; }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  #header h1 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: #1a202c; }
+  #header .dims { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  #header .stack { margin-left: auto; font-size: 11px; color: #718096; font-family: 'SF Mono', Menlo, monospace; }
+
+  .panel {
+    position: fixed;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.05);
+  }
+
+  #legend { top: 60px; right: 12px; min-width: 230px; max-width: 290px; max-height: calc(100vh - 76px); overflow-y: auto; }
+  #controls { bottom: 12px; left: 12px; max-width: 340px; }
+  #cameraBtns { bottom: 12px; right: 12px; }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #718096;
+    margin-bottom: 10px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .legend-color {
+    width: 28px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.12);
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18);
+  }
+  .legend-label { flex: 1; color: #2d3748; }
+  .legend-count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .legend-total .label { color: #4a5568; }
+  .legend-total .count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-group-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    margin: 10px 0 4px;
+  }
+  .legend-group-title:first-child { margin-top: 0; }
+  .legend-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding-top: 4px;
+    color: #4a5568;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend-subtotal .count { font-weight: 600; color: #2d3748; }
+
+  .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn-row { margin-top: 6px; }
+
+  .btn {
+    background: rgba(15,23,42,0.04);
+    border: 1px solid rgba(15,23,42,0.1);
+    color: #2d3748;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-family: inherit;
+    min-height: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(15,23,42,0.08); border-color: rgba(15,23,42,0.15); }
+  .btn:active { transform: scale(0.97); }
+  .btn.active {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: white;
+  }
+  .btn.active:hover { background: #1d4ed8; }
+
+  #tooltip {
+    position: fixed;
+    background: rgba(15,23,42,0.95);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 200;
+    transform: translate(12px, -32px);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 768px) {
+    #header h1 { font-size: 13px; }
+    #header .dims { font-size: 11px; }
+    #header .stack { display: none; }
+    #legend { top: 56px; right: 8px; min-width: 0; max-width: 50%; padding: 10px; }
+    #legend .legend-row { font-size: 11px; padding: 3px 0; gap: 8px; }
+    #legend .legend-color { width: 22px; height: 12px; }
+    #legend .legend-label { font-size: 11px; }
+    #controls { bottom: 8px; left: 8px; right: 8px; max-width: none; padding: 10px; }
+    #cameraBtns {
+      top: 56px;
+      bottom: auto;
+      right: auto;
+      left: 8px;
+      padding: 8px;
+    }
+    .btn { font-size: 11px; padding: 7px 8px; min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Six-Course Wing Wall</h1>
+  <div class="dims" id="dimsLabel">6 courses complete · 24' face · wings ≈31° · primary caps at C4 · flat-top crown</div>
+  <div class="stack">building course-by-course · corner rounds = wing pivots</div>
+</div>
+
+<div id="legend" class="panel">
+  <div class="panel-title">Block Counts</div>
+  <div id="legendBody"></div>
+</div>
+
+<div id="controls" class="panel">
+  <div class="panel-title">View — Courses</div>
+  <div class="toggle-row">
+    <button class="btn active" data-course="0">C1</button>
+    <button class="btn active" data-course="1">C2</button>
+    <button class="btn active" data-course="2">C3</button>
+    <button class="btn active" data-course="3">C4</button>
+    <button class="btn active" data-course="4">C5</button>
+    <button class="btn active" data-course="5">C6</button>
+  </div>
+  <div class="toggle-row btn-row">
+    <button class="btn active" data-section="face">Face</button>
+    <button class="btn active" data-section="back">Back</button>
+    <button class="btn active" data-section="wing-L">Wing L</button>
+    <button class="btn active" data-section="wing-R">Wing R</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn active" id="opposingToggle">Opposing Wall</button>
+    <button class="btn active" id="deckToggle">Bridge Deck</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="explodeToggle">Explode</button>
+    <button class="btn" id="resetToggle">Reset</button>
+  </div>
+</div>
+
+<div id="cameraBtns" class="panel">
+  <div class="panel-title">Camera</div>
+  <div class="btn-row">
+    <button class="btn active" data-view="iso">Iso</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" data-view="front">Front</button>
+    <button class="btn" data-view="side">Side</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// CONFIG
+// ============================================================
+// A large wing wall built course-by-course (six courses total). We lay one
+// course at a time and verify before continuing.
+//
+// Coordinate system:
+//   Origin = ground level, centered on the wall's front face.
+//   +X right along the face, -X left
+//   +Y up
+//   +Z back (toward the back row / embankment side)
+// Front face row: block centers at z = 1 (wall occupies z 0..2).
+// Back row ("immediately behind"): block centers at z = 3 (z 2..4).
+// Together they make the course two blocks (4 ft) deep.
+//
+// Corner (End) blocks: 6 ft long with a half-cylinder rounded protrusion on one
+// end (radius 1). The flat structural face of an End block is 5 ft; the rounded
+// 1 ft cap is the pivot the wings will swing around. ry = π points the round to
+// the LEFT (-X); ry = 0 points it RIGHT (+X).
+//
+// ── COURSE 1 (this step) ─────────────────────────────────────────────
+// Front face = 24 ft of flat block face, in order L→R:
+//   [End6 round-left] [6'] [2'] [6'] [End6 round-right]
+//   5 + 6 + 2 + 6 + 5 = 24 ft of flat face.
+// The two corner rounds protrude OUTWARD at each end (left round to the left,
+// right round to the right) — symmetric, each round being a wing pivot.
+// Overall footprint spans x ≈ [-13, 13] (≈26 ft tip-to-tip).
+// Immediately behind: four 6' blocks (24 ft) forming the back row.
+//
+// Two wings flare back from the corner rounds at ≈WING_DEG°. Each wing is two
+// blocks wide: front face = 3 × 6'; back face = [5][6][6] offset 2 ft to the
+// interior, tips aligned with the front. The angle is opened until the back-face
+// inner 5' blocks clear the primary back row (steeper than ~34° they bite in).
+//
+// Courses 2–6 will be added in later steps.
+
+const COURSE_H = 2;       // each course is 2 ft tall
+const N_COURSES = 6;      // top course (C6) will be cast flat — no studs
+const WALL_T   = 2;       // wall thickness / block depth (ft)
+const EXPLODE_GAP = 3;
+
+// Wing deflection from the face line. Tightened to ≈31° so each wing's back-face
+// inner 5' block sits ~2 in from the primary back row's left face (x = -12) —
+// tweak this one value to open/close that clearance.
+const WING_DEG = 31;
+
+// Opposing wall + bridge deck (toggles). The mirrored wall sits WALL_GAP ft away
+// (primary face to primary face); a single file of 15 transverse precast planks
+// bridges the two lowered (8 ft) Course-4 caps, bearing ~2 ft on each.
+const WALL_GAP = 56;          // clear gap between the two primary faces (ft)
+// 15 transverse planks tile the 60-ft bridge length. Each runs 21 ft across the
+// roadway (X, filling the saddle) and is 4 ft along the span (Z); 15 × 4 = 60 ft.
+const N_PLANKS = 15;
+const PLANK_X  = 21;          // plank length — across the roadway (ft)
+const PLANK_Z  = 4;           // plank width — tiles along the 60-ft span (ft)
+const PLANK_T  = 8 / 12;      // plank thickness — along Y (ft) = 8"
+const DECK_Y   = 4 * COURSE_H; // planks rest on the Course-4 cap (y = 8)
+
+// UI state — hoisted so buildWall() can re-apply it after rebuilding meshes.
+const state = {
+  exploded: false,
+  opposing: true,
+  deck: true,
+  courseVisible: [true, true, true, true, true, true],
+  sectionVisible: { 'face': true, 'back': true, 'wing-L': true, 'wing-R': true },
+};
+
+// Soft pastel palette for block lengths, with End block in slate.
+const COLORS = {
+  end6: 0x9aa6b4, end4: 0xb6bfca, reg6: 0x7ba7d9, reg5: 0x6dd3c4,
+  reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
+};
+const TYPE_NAMES = {
+  end6: "6′ End (rounded)", end4: "4′ End (rounded)",
+  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton",
+  reg3: "3′ Beton", reg2: "2′ Beton",
+};
+const TYPE_WIDTH = { end6: 6, end4: 4, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2 };
+
+// ============================================================
+// WALL LAYOUT — edit here to change the wall
+// ============================================================
+// Helpers push BLOCKS[] entries.
+//   block(type, x, z, ry, course, section)   fully explicit placement
+//   front(type, x, course, ry)   front face row at z = 1
+//   back(type, x, course, ry)    back row at z = 3
+//   course: 0 = bottom (C1) … 5 = top (C6)
+//   ry: rotation about Y (π puts an End block's round on the LEFT).
+
+const BLOCKS = [];
+function block(type, x, z, ry, course, section, flatTop = false) {
+  BLOCKS.push({ type, x, y: course * COURSE_H + COURSE_H/2, z, ry, course, section, flatTop });
+}
+function front(type, x, course, ry = 0, flatTop = false) { block(type, x, 1, ry, course, 'face', flatTop); }
+function back(type, x, course, ry = 0)  { block(type, x, 3, ry, course, 'back'); }
+// A two-block-wide wing pivoting on a corner round at point P.
+//   u = down-wing unit axis, n = interior (back-face) unit normal, ry = block yaw.
+function placeWing(P, u, n, ry, section, course) {
+  // Front face: three 6' blocks from the tangent (axial 1) outward — centers 4, 10, 16.
+  for (let k = 0; k < 3; k++) {
+    const a = 4 + 6 * k;
+    block('reg6', P.x + a*u.x, P.z + a*u.z, ry, course, section);
+  }
+  // Back face: [5][6][6], offset 2 ft to the interior, tips aligned with the front.
+  const types = ['reg5', 'reg6', 'reg6'];
+  const axial = [4.5, 10, 16];
+  for (let k = 0; k < 3; k++) {
+    block(types[k], P.x + 2*n.x + axial[k]*u.x, P.z + 2*n.z + axial[k]*u.z, ry, course, section);
+  }
+}
+
+// Place one block in a wing frame: `axial` ft down-wing from the pivot P,
+// `perp` ft along the interior normal n (0 = front-face row, 2 = back-face row).
+function wingBlock(P, u, n, axial, perp, type, ry, course, section) {
+  block(type, P.x + axial*u.x + perp*n.x, P.z + axial*u.z + perp*n.z, ry, course, section);
+}
+
+function populateLayout() {
+  BLOCKS.length = 0;
+
+  // ───── COURSE 1 (bottom) ─────
+  // Front face, L→R: End(round left) · 6' · 2' · 6' · End(round left).
+  front('end6', -10, 0, Math.PI);   // left corner, round protrudes left   (x -13..-7)
+  front('reg6',  -4, 0);            // x -7..-1
+  front('reg2',   0, 0);            // x -1..1
+  front('reg6',   4, 0);            // x 1..7
+  front('end6',  10, 0, 0);         // right corner, round protrudes right (x 7..13)
+
+  // Back row: four 6' blocks immediately behind (24 ft, x -12..12).
+  back('reg6', -9, 0);
+  back('reg6', -3, 0);
+  back('reg6',  3, 0);
+  back('reg6',  9, 0);
+
+  // Two wings at ≈WING_DEG°, pivoting on the corner rounds at x = ±12.
+  const th = THREE.MathUtils.degToRad(WING_DEG);
+  const c = Math.cos(th), s = Math.sin(th);
+  const L = { P: { x: -12, z: 1 }, u: { x: -c, z: s }, n: { x:  s, z: c } };
+  const R = { P: { x:  12, z: 1 }, u: { x:  c, z: s }, n: { x: -s, z: c } };
+  placeWing(L.P, L.u, L.n,  Math.PI + th, 'wing-L', 0); // back-left
+  placeWing(R.P, R.u, R.n, -th,           'wing-R', 0); // back-right
+
+  // ───── COURSE 2 ───── running bond on course 1. The corner End blocks restack
+  // on the same pivots (rounds/cones over course 1's) but turn their bodies down
+  // the wings — alternating from course 1, where the bodies lay in the face.
+  //   Front sweep L→R:  [2][6][6] · corner · [6][4][6][6] · corner · [6][6][2]
+  //   Back sweep  L→R:  [5][6][6] · [3] · [6][6][6] · [3] · [6][6][5]
+  // Primary front: 4 regulars span x -11..11 between the corner rounds.
+  front('reg6', -8, 1);
+  front('reg4', -3, 1);
+  front('reg6',  2, 1);
+  front('reg6',  8, 1);
+  // Primary back: 3' caps at the corners offset the seams off course 1 (x -12..12).
+  back('reg3', -10.5, 1);
+  back('reg6',  -6,   1);
+  back('reg6',   0,   1);
+  back('reg6',   6,   1);
+  back('reg3',  10.5, 1);
+  // Left wing — corner (body down the wing, round on the pivot) + front 6/6/2, back 6/6/5.
+  wingBlock(L.P, L.u, L.n,  2,   0, 'end6', th,           1, 'wing-L'); // corner
+  wingBlock(L.P, L.u, L.n,  8,   0, 'reg6', Math.PI + th, 1, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 14,   0, 'reg6', Math.PI + th, 1, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 18,   0, 'reg2', Math.PI + th, 1, 'wing-L'); // tip
+  wingBlock(L.P, L.u, L.n,  5,   2, 'reg6', Math.PI + th, 1, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 11,   2, 'reg6', Math.PI + th, 1, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 16.5, 2, 'reg5', Math.PI + th, 1, 'wing-L'); // tip
+  // Right wing — mirror.
+  wingBlock(R.P, R.u, R.n,  2,   0, 'end6', Math.PI - th, 1, 'wing-R'); // corner
+  wingBlock(R.P, R.u, R.n,  8,   0, 'reg6', -th,          1, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 14,   0, 'reg6', -th,          1, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 18,   0, 'reg2', -th,          1, 'wing-R'); // tip
+  wingBlock(R.P, R.u, R.n,  5,   2, 'reg6', -th,          1, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 11,   2, 'reg6', -th,          1, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 16.5, 2, 'reg5', -th,          1, 'wing-R'); // tip
+
+  // ───── COURSE 3 ───── repeats course 1's front pattern (running bond over
+  // course 2); corners flip their bodies back into the face, rounds outward.
+  // The back row exists ONLY on the wings here — the primary wall is a single
+  // block deep on this course.
+  //   Front sweep L→R:  [6][6][6] · corner · [6][2][6] · corner · [6][6][6]
+  //   Back sweep  L→R:  [6][6][5] · — — · [5][6][6]   (no primary back row)
+  front('end6', -10, 2, Math.PI);   // left corner, round left
+  front('reg6',  -4, 2);
+  front('reg2',   0, 2);
+  front('reg6',   4, 2);
+  front('end6',  10, 2, 0);         // right corner, round right
+  placeWing(L.P, L.u, L.n,  Math.PI + th, 'wing-L', 2); // front 6/6/6 + back 5/6/6
+  placeWing(R.P, R.u, R.n, -th,           'wing-R', 2);
+
+  // ───── COURSE 4 ───── front wall only (no back row anywhere). Same front
+  // pattern as course 2. The primary front is the FLAT-TOP cap of the primary
+  // wall (it tops out here); the wing blocks stay studded for courses 5–6.
+  //   Front sweep L→R:  [2][6][6] · corner · [6][4][6][6](flat top) · corner · [6][6][2]
+  // Primary front — flat-top cap:
+  front('reg6', -8, 3, 0, true);
+  front('reg4', -3, 3, 0, true);
+  front('reg6',  2, 3, 0, true);
+  front('reg6',  8, 3, 0, true);
+  // Left wing front — corner + 6/6/2 (studded; no back row this course).
+  wingBlock(L.P, L.u, L.n,  2, 0, 'end6', th,           3, 'wing-L'); // corner
+  wingBlock(L.P, L.u, L.n,  8, 0, 'reg6', Math.PI + th, 3, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 14, 0, 'reg6', Math.PI + th, 3, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 18, 0, 'reg2', Math.PI + th, 3, 'wing-L'); // tip
+  // Right wing front — mirror.
+  wingBlock(R.P, R.u, R.n,  2, 0, 'end6', Math.PI - th, 3, 'wing-R'); // corner
+  wingBlock(R.P, R.u, R.n,  8, 0, 'reg6', -th,          3, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 14, 0, 'reg6', -th,          3, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 18, 0, 'reg2', -th,          3, 'wing-R'); // tip
+
+  // ───── COURSE 5 ───── wings only (primary capped at course 4). First use of
+  // the 4' End corner block (end4): 2 ft studded body + 2 ft rounded section,
+  // its cone restacking on the corner pivot below. Front row only.
+  //   Front sweep L→R:  [4][6][6] · corner(4') · —no primary— · corner(4') · [6][6][4]
+  // Left wing — 4' corner + 6/6/4 to the tip.
+  wingBlock(L.P, L.u, L.n,  1, 0, 'end4', th,           4, 'wing-L'); // 4' corner
+  wingBlock(L.P, L.u, L.n,  6, 0, 'reg6', Math.PI + th, 4, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 12, 0, 'reg6', Math.PI + th, 4, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 17, 0, 'reg4', Math.PI + th, 4, 'wing-L'); // tip
+  // Right wing — mirror.
+  wingBlock(R.P, R.u, R.n,  1, 0, 'end4', Math.PI - th, 4, 'wing-R'); // 4' corner
+  wingBlock(R.P, R.u, R.n,  6, 0, 'reg6', -th,          4, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 12, 0, 'reg6', -th,          4, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 17, 0, 'reg4', -th,          4, 'wing-R'); // tip
+
+  // ───── COURSE 6 ───── top course: wings only, back to the 6' corner block,
+  // all flat-top (the top-course rule drops every stud and cone automatically).
+  //   Front sweep L→R:  [2][6][6] · corner(6') · —no primary— · corner(6') · [6][6][2]
+  wingBlock(L.P, L.u, L.n,  2, 0, 'end6', th,           5, 'wing-L'); // 6' corner
+  wingBlock(L.P, L.u, L.n,  8, 0, 'reg6', Math.PI + th, 5, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 14, 0, 'reg6', Math.PI + th, 5, 'wing-L');
+  wingBlock(L.P, L.u, L.n, 18, 0, 'reg2', Math.PI + th, 5, 'wing-L'); // tip
+  wingBlock(R.P, R.u, R.n,  2, 0, 'end6', Math.PI - th, 5, 'wing-R'); // 6' corner
+  wingBlock(R.P, R.u, R.n,  8, 0, 'reg6', -th,          5, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 14, 0, 'reg6', -th,          5, 'wing-R');
+  wingBlock(R.P, R.u, R.n, 18, 0, 'reg2', -th,          5, 'wing-R'); // tip
+
+  // ───── OPPOSING WALL (toggle) ───── wall B = wall A reflected across the
+  // channel midplane z = -WALL_GAP/2 (x → x, z → -WALL_GAP - z, ry → -ry). The
+  // two primary faces look at each other across the gap; the wings flare away.
+  if (state.opposing) {
+    const nA = BLOCKS.length;
+    for (let i = 0; i < nA; i++) {
+      const a = BLOCKS[i];
+      BLOCKS.push({ ...a, z: -WALL_GAP - a.z, ry: -a.ry, wall: 'B' });
+    }
+  }
+}
+
+// ============================================================
+// BLOCK GEOMETRY
+// ============================================================
+
+// Debossed AROOSTA CAST normal map for the long faces of regular blocks.
+function createTextTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = 'bold 70px "Arial Black", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const text = 'AROOSTA CAST';
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  for (let i = 5; i >= 0; i--) {
+    const shade = 90 + i * 8;
+    ctx.fillStyle = `rgb(${shade}, ${shade}, 255)`;
+    ctx.fillText(text, cx + i * 0.5, cy + i * 0.5);
+  }
+  ctx.fillStyle = 'rgb(80, 80, 255)';
+  ctx.fillText(text, cx, cy);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+const textTexture = createTextTexture();
+
+// Mottled concrete texture for the precast deck planks.
+function createConcreteTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#aeaca6';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 9000; i++) {
+    const x = Math.random() * 256, y = Math.random() * 256;
+    const v = 150 + Math.floor(Math.random() * 70);
+    ctx.fillStyle = `rgba(${v},${v},${v - 6},${Math.random() * 0.45})`;
+    ctx.fillRect(x, y, 1.6, 1.6);
+  }
+  // a few darker pits for cast-concrete character
+  for (let i = 0; i < 400; i++) {
+    const x = Math.random() * 256, y = Math.random() * 256;
+    ctx.fillStyle = `rgba(90,88,84,${Math.random() * 0.3})`;
+    ctx.fillRect(x, y, 2.2, 2.2);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(5, 1);
+  return tex;
+}
+const concreteTexture = createConcreteTexture();
+
+// 4-sided pyramid frustum stud (one per foot of width, two rows).
+const STUD_TOP_R  = 2.5 / 12 / 2;        // top dia 2.5"
+const STUD_BOT_R  = 5.5 / 12 / 2;        // bottom dia 5.5"
+const STUD_H      = 0.15;                // ~2"
+const studGeo     = new THREE.CylinderGeometry(STUD_TOP_R, STUD_BOT_R, STUD_H, 4, 1, false, Math.PI/4);
+const studMat     = new THREE.MeshPhongMaterial({ color: 0x7a8696, flatShading: true });
+const studEdgeGeo = new THREE.EdgesGeometry(studGeo);
+
+function makePyramidStud(x, z) {
+  const stud = new THREE.Mesh(studGeo, studMat);
+  stud.position.set(x, STUD_H/2, z);
+  stud.castShadow = true;
+  stud.receiveShadow = true;
+  stud.add(new THREE.LineSegments(studEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })));
+  return stud;
+}
+
+// Studs for a regular block: pyramid frustums on a 1 ft grid, two rows 6" from edge.
+function createStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < Math.floor(width); i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  return group;
+}
+
+// Studs for an End block: 4 pyramid studs in the straight section, plus the
+// big cone stud at the rounded end (the corner pivot).
+const ROUND_STUD_TOP_R = 8.5 / 12 / 2;   // 8.5" dia at top
+const ROUND_STUD_BOT_R = 1.0 / 2;        // 1 ft dia at base
+const ROUND_STUD_H     = 0.25;           // ~3"
+const roundStudGeo     = new THREE.CylinderGeometry(ROUND_STUD_TOP_R, ROUND_STUD_BOT_R, ROUND_STUD_H, 16, 1);
+const roundStudEdgeGeo = new THREE.EdgesGeometry(roundStudGeo);
+
+function createEndStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  const nBody = Math.round(width - 2);   // studded body columns; the rounded end is 2 ft
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < nBody; i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  // Big cone stud centered on the arc axis of the rounded protrusion
+  // (local x = width/2 - depth/2) — the corner pivot axis.
+  const roundStud = new THREE.Mesh(roundStudGeo, studMat);
+  roundStud.position.set(width/2 - depth/2, ROUND_STUD_H/2, 0);
+  roundStud.castShadow = true;
+  roundStud.receiveShadow = true;
+  roundStud.add(new THREE.LineSegments(
+    roundStudEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })
+  ));
+  group.add(roundStud);
+  return group;
+}
+
+// Extruded geometry for the End block — flat back/sides on -X, rounded
+// half-cylinder protrusion on +X. Centered on local origin in all three axes.
+function createEndGeometry(width, height, depth) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width/2, -height/2);
+  shape.lineTo(width/2 - depth/2, -height/2);
+  shape.absarc(width/2 - depth/2, 0, depth/2, -Math.PI/2, Math.PI/2, false);
+  shape.lineTo(-width/2, height/2);
+  shape.lineTo(-width/2, -height/2);
+
+  const geo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(
+    -(bb.min.x + bb.max.x) / 2,
+    -(bb.min.y + bb.max.y) / 2,
+    -(bb.min.z + bb.max.z) / 2
+  );
+  return geo;
+}
+
+// Build a single block mesh from a spec.
+const allBlocks = [];
+function createBlockMesh(spec) {
+  const width = TYPE_WIDTH[spec.type];
+  const isEnd = spec.type.startsWith('end');
+  const color = COLORS[spec.type];
+  let geo, materials;
+
+  if (isEnd) {
+    geo = createEndGeometry(width, COURSE_H, WALL_T);
+    materials = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+  } else {
+    geo = new THREE.BoxGeometry(width, COURSE_H, WALL_T);
+    materials = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+      if (i === 0 || i === 1 || i === 4 || i === 5) {
+        const tex = textTexture.clone();
+        tex.center.set(0, 0);
+        tex.repeat.set(1.5, 1.5);
+        const off = (1.5 - 1) / (2 * 1.5);
+        tex.offset.set(off, off);
+        tex.needsUpdate = true;
+        m.normalMap = tex;
+        m.normalScale = new THREE.Vector2(2.2, -2.2);
+      }
+      materials.push(m);
+    }
+  }
+
+  const mesh = new THREE.Mesh(geo, materials);
+  mesh.position.set(spec.x, spec.y, spec.z);
+  mesh.rotation.y = spec.ry;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { spec };
+
+  // Cast-flat tops carry no studs — the top course, plus any block flagged flatTop.
+  if (spec.course < N_COURSES - 1 && !spec.flatTop) {
+    const studs = isEnd
+      ? createEndStudsGroup(width, WALL_T)
+      : createStudsGroup(width, WALL_T);
+    studs.position.y = COURSE_H / 2;
+    mesh.add(studs);
+  }
+
+  mesh.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x1a202c, transparent: true, opacity: 0.78 })
+  ));
+
+  allBlocks.push(mesh);
+  return mesh;
+}
+
+// ============================================================
+// SCENE
+// ============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef2f7);
+scene.fog = new THREE.Fog(0xeef2f7, 100, 320);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 600);
+const targetPoint = new THREE.Vector3(0, 6, -WALL_GAP / 2);
+camera.position.set(80, 66, 60);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.78);
+dirLight.position.set(25, 60, 35);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -90;
+dirLight.shadow.camera.right = 90;
+dirLight.shadow.camera.top = 90;
+dirLight.shadow.camera.bottom = -90;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 280;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xb8d4f0, 0.32);
+fillLight.position.set(-25, 25, -10);
+scene.add(fillLight);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshLambertMaterial({ color: 0xdce3eb })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(100, 50, 0x94a3b8, 0xc4cdd6);
+grid.position.set(0, 0, -WALL_GAP / 2);
+grid.material.opacity = 0.6;
+grid.material.transparent = true;
+scene.add(grid);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(targetPoint);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 5;
+controls.maxDistance = 200;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.update();
+
+// Build the wall.
+const courseGroups = Array.from({ length: N_COURSES }, () => new THREE.Group());
+courseGroups.forEach(g => scene.add(g));
+
+function buildWall() {
+  courseGroups.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
+  allBlocks.length = 0;
+  populateLayout();
+  BLOCKS.forEach(spec => courseGroups[spec.course].add(createBlockMesh(spec)));
+  updateLegend();
+  applyVisibility();
+  updateLayout();
+}
+
+// ============================================================
+// BRIDGE DECK — single file of 15 transverse planks bridging the Course-4 caps.
+// ============================================================
+const deckGroup = new THREE.Group();
+scene.add(deckGroup);
+const deckPlanks = [];
+function buildDeck() {
+  while (deckGroup.children.length) deckGroup.remove(deckGroup.children[0]);
+  deckPlanks.length = 0;
+  // 15 planks laid 4 ft apart along Z, tiling the 60-ft span. Plank 0 bears ~2 ft
+  // on wall A's cap (z 0..2); plank 14 reaches wall B's cap. Each runs 21 ft in X.
+  for (let i = 0; i < N_PLANKS; i++) {
+    const z = WALL_T - PLANK_Z/2 - i * PLANK_Z;   // centers 0, -4, -8, … , -56
+    const geo = new THREE.BoxGeometry(PLANK_X, PLANK_T, PLANK_Z);
+    const mat = new THREE.MeshStandardMaterial({
+      map: concreteTexture, color: 0xffffff, roughness: 0.96, metalness: 0.0,
+    });
+    const plank = new THREE.Mesh(geo, mat);
+    plank.position.set(0, DECK_Y + PLANK_T/2, z);
+    plank.castShadow = true;
+    plank.receiveShadow = true;
+    plank.userData = { spec: { type: 'plank', section: 'deck', plank: true } };
+    plank.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x5b6470, transparent: true, opacity: 0.55 })
+    ));
+    deckGroup.add(plank);
+    deckPlanks.push(plank);
+  }
+}
+buildDeck();
+deckGroup.visible = state.deck;
+
+// Build the wall now that the deck group exists (updateLayout moves both).
+buildWall();
+
+// ============================================================
+// UI: legend, toggles, camera, tooltip
+// ============================================================
+function updateLegend() {
+  const order = ['end6', 'end4', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
+  // Split by finish: courses below the top are standard (studded); the cast-flat
+  // top course is flat-top (no studs).
+  const standard = {}, flat = {};
+  BLOCKS.forEach(b => {
+    const studded = (b.course < N_COURSES - 1) && !b.flatTop;
+    const bucket = studded ? standard : flat;
+    bucket[b.type] = (bucket[b.type] || 0) + 1;
+  });
+
+  function renderGroup(title, counts) {
+    let rows = '', subtotal = 0;
+    order.forEach(k => {
+      if (!counts[k]) return;
+      subtotal += counts[k];
+      const colorHex = '#' + COLORS[k].toString(16).padStart(6, '0');
+      rows += `
+        <div class="legend-row">
+          <div class="legend-color" style="background:${colorHex}"></div>
+          <div class="legend-label">${TYPE_NAMES[k]}</div>
+          <div class="legend-count">${counts[k]}</div>
+        </div>`;
+    });
+    if (!rows) return '';
+    return `<div class="legend-group-title">${title}</div>${rows}
+      <div class="legend-subtotal"><span>Subtotal</span><span class="count">${subtotal}</span></div>`;
+  }
+
+  const deckLine = state.deck
+    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck planks (21'×4'×8")</span><span class="count">15</span></div>`
+    : '';
+  document.getElementById('legendBody').innerHTML =
+    renderGroup('Standard — studded', standard) +
+    renderGroup('Flat-top — cast flat', flat) +
+    `<div class="legend-total">
+      <span class="label">Total blocks</span>
+      <span class="count">${BLOCKS.length}</span>
+    </div>` + deckLine;
+}
+
+function updateLayout() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
+  }
+  // The deck rides up with the course it bears on (C4 = index 3) so it stays
+  // seated on its caps when the courses explode.
+  deckGroup.position.y = state.exploded ? 3 * EXPLODE_GAP : 0;
+}
+function applyVisibility() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].children.forEach(mesh => {
+      const s = mesh.userData.spec;
+      if (!s) return;
+      mesh.visible = state.courseVisible[s.course] && state.sectionVisible[s.section];
+    });
+  }
+}
+
+document.querySelectorAll('[data-course]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const i = parseInt(e.currentTarget.dataset.course);
+    state.courseVisible[i] = !state.courseVisible[i];
+    e.currentTarget.classList.toggle('active', state.courseVisible[i]);
+    applyVisibility();
+  });
+});
+document.querySelectorAll('[data-section]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const key = e.currentTarget.dataset.section;
+    state.sectionVisible[key] = !state.sectionVisible[key];
+    e.currentTarget.classList.toggle('active', state.sectionVisible[key]);
+    applyVisibility();
+  });
+});
+document.getElementById('explodeToggle').addEventListener('click', e => {
+  state.exploded = !state.exploded;
+  e.currentTarget.classList.toggle('active', state.exploded);
+  updateLayout();
+});
+const dimsBase = document.getElementById('dimsLabel').textContent;
+document.getElementById('dimsLabel').textContent =
+  dimsBase + (state.opposing ? ` · opposing pair · ${WALL_GAP}' gap` : '');
+function activeViewKey() {
+  const a = document.querySelector('[data-view].active');
+  return a ? a.dataset.view : 'iso';
+}
+document.getElementById('opposingToggle').addEventListener('click', e => {
+  state.opposing = !state.opposing;
+  e.currentTarget.classList.toggle('active', state.opposing);
+  buildWall();
+  grid.position.set(0, 0, state.opposing ? -WALL_GAP / 2 : 5);
+  document.getElementById('dimsLabel').textContent =
+    dimsBase + (state.opposing ? ` · opposing pair · ${WALL_GAP}' gap` : '');
+  animateCamera(getPresets()[activeViewKey()]);
+});
+document.getElementById('deckToggle').addEventListener('click', e => {
+  state.deck = !state.deck;
+  e.currentTarget.classList.toggle('active', state.deck);
+  deckGroup.visible = state.deck;
+  updateLegend();
+});
+document.getElementById('resetToggle').addEventListener('click', () => {
+  state.exploded = false;
+  document.getElementById('explodeToggle').classList.remove('active');
+  state.courseVisible = [true, true, true, true, true, true];
+  state.sectionVisible = { 'face': true, 'back': true, 'wing-L': true, 'wing-R': true };
+  document.querySelectorAll('[data-course], [data-section]').forEach(b => b.classList.add('active'));
+  applyVisibility();
+  animateCamera(getPresets().iso);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-view="iso"]').classList.add('active');
+  updateLayout();
+});
+
+function getPresets() {
+  if (state.opposing) {
+    // The pair + deck is centered on z = -WALL_GAP/2.
+    const zc = -WALL_GAP / 2;
+    return {
+      iso:   { pos: new THREE.Vector3(80, 66, 60),       target: new THREE.Vector3(0, 6, zc) },
+      top:   { pos: new THREE.Vector3( 0, 165, zc + 0.01), target: new THREE.Vector3(0, 0, zc) },
+      front: { pos: new THREE.Vector3( 0, 20, 70),       target: new THREE.Vector3(0, 6, zc) },
+      side:  { pos: new THREE.Vector3(105, 18, zc),      target: new THREE.Vector3(0, 6, zc) },
+    };
+  }
+  return {
+    iso:   { pos: new THREE.Vector3(56, 46, 64),    target: new THREE.Vector3(0, 5, 5) },
+    top:   { pos: new THREE.Vector3( 0, 100, 5.001), target: new THREE.Vector3(0, 0, 5) },
+    front: { pos: new THREE.Vector3( 0, 16, -66),   target: new THREE.Vector3(0, 5, 5) },
+    side:  { pos: new THREE.Vector3(84, 16, 5),     target: new THREE.Vector3(0, 5, 5) },
+  };
+}
+function animateCamera(preset, duration = 600) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const startTime = performance.now();
+  function step() {
+    const t = Math.min((performance.now() - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(startPos, preset.pos, eased);
+    controls.target.lerpVectors(startTarget, preset.target, eased);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    animateCamera(getPresets()[e.currentTarget.dataset.view]);
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+  });
+});
+
+// Hover tooltip (desktop only).
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let isTouch = false;
+window.addEventListener('touchstart', () => { isTouch = true; }, { once: true });
+
+function findBlockAncestor(o) {
+  while (o && !o.userData?.spec) o = o.parent;
+  return o;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+  if (isTouch) return;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const targets = state.deck ? allBlocks.concat(deckPlanks) : allBlocks;
+  const intersects = raycaster.intersectObjects(targets, true);
+  if (intersects.length > 0) {
+    const block = findBlockAncestor(intersects[0].object);
+    if (block && block.visible) {
+      const s = block.userData.spec;
+      if (s.plank) {
+        tooltip.innerHTML = `<strong>Deck plank</strong> · 21' × 4' × 8" precast`;
+      } else {
+        const sectionLabel = s.section === 'face' ? 'Front Face'
+          : s.section === 'back' ? 'Back Row'
+          : s.section === 'wing-L' ? 'Left Wing' : 'Right Wing';
+        const finishLabel = (s.course < N_COURSES - 1 && !s.flatTop) ? '' : ' · flat top';
+        const wallLabel = s.wall === 'B' ? ' · Wall B' : '';
+        tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${sectionLabel} · C${s.course + 1}${finishLabel}${wallLabel}`;
+      }
+      tooltip.style.left = e.clientX + 'px';
+      tooltip.style.top = e.clientY + 'px';
+      tooltip.style.display = 'block';
+      return;
+    }
+  }
+  tooltip.style.display = 'none';
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+  tooltip.style.display = 'none';
+});
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
+
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+</body>
+</html>
