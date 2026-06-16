@@ -222,6 +222,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // 45° back, each 12 ft along its axis from the tangent point.
 
 const COURSE_H = 2;       // each course is 2 ft tall
+const N_COURSES = 2;      // top course (C2) is cast flat — no studs
 const WALL_T   = 2;       // wall thickness / block depth (ft)
 const EXPLODE_GAP = 3;
 const WALL_GAP = 15;      // face-to-face distance between wall A and wall B
@@ -313,9 +314,8 @@ function populateLayout() {
 
   // ───── WALL A — COURSE 2 (top) ─────
   // C2 corner is the wing's first block: a 6′ End with flat short end pointing
-  // toward the wing tip and rounded end (arc center) seated at the pivot. With
-  // the cone stud at the arc axis, the C2 cone lands directly above C1's — one
-  // vertical column of cones per pivot.
+  // toward the wing tip and rounded end (arc center) seated at the pivot.
+  // C2 is the top course — cast with a flat top (no studs or corner cone).
   // 18 ft face: [reg6][reg2][reg6] — joints at world ±1 (2 ft off C1's ±3).
   face('reg6', -4, 1);
   face('reg2',  0, 1);
@@ -502,11 +502,14 @@ function createBlockMesh(spec) {
   mesh.receiveShadow = true;
   mesh.userData = { spec };
 
-  const studs = isEnd
-    ? createEndStudsGroup(width, WALL_T)
-    : createStudsGroup(width, WALL_T);
-  studs.position.y = COURSE_H / 2;
-  mesh.add(studs);
+  // Top course is cast with a flat top — no studs (including the corner cone).
+  if (spec.course < N_COURSES - 1) {
+    const studs = isEnd
+      ? createEndStudsGroup(width, WALL_T)
+      : createStudsGroup(width, WALL_T);
+    studs.position.y = COURSE_H / 2;
+    mesh.add(studs);
+  }
 
   mesh.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(geo),
