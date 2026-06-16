@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>45° Bend Wall — 18' straight × 10' arm · rounded corner · 4' H</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #1a202c;
+    touch-action: none;
+    color-scheme: light;
+  }
+  canvas { display: block; }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  #header h1 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: #1a202c; }
+  #header .dims { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  #header .stack { margin-left: auto; font-size: 11px; color: #718096; font-family: 'SF Mono', Menlo, monospace; }
+
+  .panel {
+    position: fixed;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.05);
+  }
+
+  #legend { top: 60px; right: 12px; min-width: 230px; max-width: 290px; max-height: calc(100vh - 76px); overflow-y: auto; }
+  #controls { bottom: 12px; left: 12px; max-width: 320px; }
+  #cameraBtns { bottom: 12px; right: 12px; }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #718096;
+    margin-bottom: 10px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .legend-color {
+    width: 28px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.12);
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18);
+  }
+  .legend-label { flex: 1; color: #2d3748; }
+  .legend-count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .legend-total .label { color: #4a5568; }
+  .legend-total .count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-group-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    margin: 10px 0 4px;
+  }
+  .legend-group-title:first-child { margin-top: 0; }
+  .legend-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding-top: 4px;
+    color: #4a5568;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend-subtotal .count { font-weight: 600; color: #2d3748; }
+
+  .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn-row { margin-top: 6px; }
+
+  .btn {
+    background: rgba(15,23,42,0.04);
+    border: 1px solid rgba(15,23,42,0.1);
+    color: #2d3748;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-family: inherit;
+    min-height: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(15,23,42,0.08); border-color: rgba(15,23,42,0.15); }
+  .btn:active { transform: scale(0.97); }
+  .btn.active {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: white;
+  }
+  .btn.active:hover { background: #1d4ed8; }
+
+  #tooltip {
+    position: fixed;
+    background: rgba(15,23,42,0.95);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 200;
+    transform: translate(12px, -32px);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 768px) {
+    #header h1 { font-size: 13px; }
+    #header .dims { font-size: 11px; }
+    #header .stack { display: none; }
+    #legend { top: 56px; right: 8px; min-width: 0; max-width: 50%; padding: 10px; }
+    #legend .legend-row { font-size: 11px; padding: 3px 0; gap: 8px; }
+    #legend .legend-color { width: 22px; height: 12px; }
+    #legend .legend-label { font-size: 11px; }
+    #controls { bottom: 8px; left: 8px; right: 8px; max-width: none; padding: 10px; }
+    #cameraBtns {
+      top: 56px;
+      bottom: auto;
+      right: auto;
+      left: 8px;
+      padding: 8px;
+    }
+    .btn { font-size: 11px; padding: 7px 8px; min-height: 34px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>45° Bend Wall</h1>
+  <div class="dims" id="dimsLabel">18' straight run · 10' arm @ 45° · 4' H (2 courses) · rounded corner</div>
+  <div class="stack">single rounded corner · corner-alternation bond · flat-top C2</div>
+</div>
+
+<div id="legend" class="panel">
+  <div class="panel-title">Block Counts</div>
+  <div id="legendBody"></div>
+</div>
+
+<div id="controls" class="panel">
+  <div class="panel-title">View</div>
+  <div class="toggle-row">
+    <button class="btn active" data-course="0">C1 Bottom</button>
+    <button class="btn active" data-course="1">C2 Top</button>
+  </div>
+  <div class="toggle-row btn-row">
+    <button class="btn active" data-section="face">Straight Run</button>
+    <button class="btn active" data-section="arm">45° Arm</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="opposingToggle">Opposing Wall</button>
+    <button class="btn" id="explodeToggle">Explode</button>
+    <button class="btn" id="resetToggle">Reset</button>
+  </div>
+</div>
+
+<div id="cameraBtns" class="panel">
+  <div class="panel-title">Camera</div>
+  <div class="btn-row">
+    <button class="btn active" data-view="iso">Iso</button>
+    <button class="btn" data-view="top">Top</button>
+    <button class="btn" data-view="front">Front</button>
+    <button class="btn" data-view="side">Side</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// CONFIG
+// ============================================================
+// A single-bend wall (one rounded corner), not a symmetric wing wall:
+//
+//     arm (10')
+//      /
+//     /   45°
+//    ◜  ← rounded corner
+//    |
+//    |  straight run (18')
+//    |
+//
+// Coordinate system:
+//   Origin = ground level, on the straight run's front edge, mid-length.
+//   +X along the straight run toward the corner, -X toward the free end
+//   +Y up
+//   +Z back / embankment (backfill) side — the concave INSIDE of the bend
+// Straight run ("face"): world X ∈ [-9, +9], Z ∈ [0, 2]. Block centers at z = 1.
+// The free (bottom) end is the flat block end at x = -9. The corner is at the
+// +X end: a half-cylinder pivot at (8, _, 1), radius 1, formed by the rounded
+// protrusion of the corner End block. The arm kicks back 45° from the run line
+// (interior run↔arm angle 135°), flaring toward +Z, 10 ft along its axis from
+// the tangent point.
+//
+// Corner alternation (so the rounds nest and the cone studs stack in one
+// vertical column at the pivot):
+//   C1: the corner End block lies ALONG THE RUN — round at the pivot, 4' body
+//       pointing back down the run, the round cap filling the outer 2 ft.
+//   C2: the corner End block lies ALONG THE ARM — round seats at the same pivot
+//       (filling the outer 2 ft of the run), 4' body starting the arm.
+//
+// Running bond — zero stacked seams:
+//   Run: C1 joints at ±3 (mid-block on C2's spans -5..1 and 1..7);
+//        C2 joints at -5, +1, +7 (under/over solid C1 blocks).
+//   Arm (distance from the pivot tangent): C1 = 6 + 4 (joint at 6),
+//        C2 = corner body + 6' (joint at 4) — each joint lands mid-block below.
+//
+// The top course (C2) is cast with a flat top — no studs.
+
+const COURSE_H = 2;       // each course is 2 ft tall
+const N_COURSES = 2;      // top course is cast flat — no studs
+const WALL_T   = 2;       // wall thickness / block depth (ft)
+const EXPLODE_GAP = 3;
+const WALL_GAP = 15;      // straight-run face-to-face distance when opposing wall is on
+
+const SQ = Math.SQRT1_2;                  // sin/cos of 45°
+const ARM_AXIS = { x: SQ, z: SQ };        // arm direction from the corner
+const faceLength = 18;                    // straight run length (corner included)
+const ARM_LEN    = 10;                    // arm length from the tangent point
+const PIVOT   = { x: 0, z: 1 };
+const TANGENT = { x: 0, z: 0 };
+function updatePivots() {
+  PIVOT.x = faceLength / 2 - 1;           // pivot is 1 ft inside the protrusion tip
+  TANGENT.x = PIVOT.x + ARM_AXIS.x;
+  TANGENT.z = PIVOT.z + ARM_AXIS.z;
+}
+updatePivots();
+
+// UI state — hoisted so buildWall() can re-apply it after rebuilding meshes.
+const state = {
+  exploded: false,
+  opposing: false,
+  courseVisible: [true, true],
+  sectionVisible: { 'face': true, 'arm': true },
+};
+
+// Soft pastel palette for block lengths, with End block in slate.
+const COLORS = {
+  end6: 0x9aa6b4, reg6: 0x7ba7d9, reg5: 0x6dd3c4,
+  reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
+};
+const TYPE_NAMES = {
+  end6: "6′ End (rounded)",
+  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton",
+  reg3: "3′ Beton", reg2: "2′ Beton",
+};
+const TYPE_WIDTH = { end6: 6, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2 };
+
+// ============================================================
+// WALL LAYOUT — edit here to change the wall
+// ============================================================
+// Helpers below build BLOCKS[] entries. Conventions:
+//   face(type, x, course)              x is the world-X center of the block
+//   arm(type, distFromTangent, course) distance along the arm from the tangent
+//   course: 0 = bottom, 1 = top
+// The corner End block on the run auto-orients its round toward +X (the pivot).
+
+const BLOCKS = [];
+function face(type, x, course) {
+  const ry = (type === 'end6' && x < 0) ? Math.PI : 0;
+  BLOCKS.push({ type, x, y: course * COURSE_H + COURSE_H/2, z: 1, ry, course, section: 'face' });
+}
+function arm(type, distFromTangent, course) {
+  // Regular blocks: local +X points down the arm (away from the pivot).
+  // End blocks: rotated 180° so local +X points back at the pivot — the flat
+  // short end faces the arm tip, the rounded end (arc center) seats at the pivot.
+  const isEnd = type === 'end6';
+  const ry = isEnd ? 3 * Math.PI / 4 : -Math.PI / 4;
+  BLOCKS.push({
+    type,
+    x: TANGENT.x + distFromTangent * ARM_AXIS.x,
+    y: course * COURSE_H + COURSE_H/2,
+    z: TANGENT.z + distFromTangent * ARM_AXIS.z,
+    ry, course, section: 'arm',
+  });
+}
+
+function populateLayout() {
+  BLOCKS.length = 0;
+
+  // ───── COURSE 1 (bottom) — corner lies along the run ─────
+  // Run 18 ft: [reg6][reg6][End6] — the corner End block's round caps the outer
+  // 2 ft at the pivot, its 4' body pointing back down the run. Joints at ±3.
+  face('reg6', -6, 0);
+  face('reg6',  0, 0);
+  face('end6',  6, 0);
+
+  // Arm 10 ft from the tangent: 6' + 4' (joint at 6).
+  arm('reg6', 3, 0);
+  arm('reg4', 8, 0);
+
+  // ───── COURSE 2 (top) — corner lies along the arm ─────
+  // The corner End block seats its round at the same pivot (filling the run's
+  // outer 2 ft) with its 4' body starting the arm. Run is filled with regulars
+  // out to x = 7; joints at -5, +1 sit over solid C1 blocks. This course is
+  // cast flat — no studs.
+  face('reg4', -7, 1);   // -9 .. -5
+  face('reg6', -2, 1);   // -5 ..  1
+  face('reg6',  4, 1);   //  1 ..  7
+
+  // Arm: corner body (0-4) + one 6-footer (4-10). Joint at 4.
+  arm('end6', 1, 1);     // arc center seats at the pivot
+  arm('reg6', 7, 1);
+
+  // ───── OPPOSING WALL (toggle) — mirrored so the two arms splay into a "Y" ─────
+  // Wall B = wall A reflected across the channel midplane z = -WALL_GAP/2:
+  // x → x, z → -WALL_GAP - z, ry → -ry. The 18' straight runs stay parallel,
+  // WALL_GAP apart with fronts facing across the channel, but both corners now
+  // sit at the SAME (+X) end and the two 45° arms diverge — one toward +Z, one
+  // toward -Z — forking off the runs like the branches of a Y / wishbone.
+  if (state.opposing) {
+    const wallACount = BLOCKS.length;
+    for (let i = 0; i < wallACount; i++) {
+      const a = BLOCKS[i];
+      BLOCKS.push({
+        ...a,
+        x: a.x,
+        z: -WALL_GAP - a.z,
+        ry: -a.ry,
+        wall: 'B',
+      });
+    }
+  }
+}
+
+// ============================================================
+// BLOCK GEOMETRY
+// ============================================================
+
+// Debossed AROOSTA CAST normal map for the long faces of regular blocks.
+function createTextTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = 'bold 70px "Arial Black", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const text = 'AROOSTA CAST';
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  for (let i = 5; i >= 0; i--) {
+    const shade = 90 + i * 8;
+    ctx.fillStyle = `rgb(${shade}, ${shade}, 255)`;
+    ctx.fillText(text, cx + i * 0.5, cy + i * 0.5);
+  }
+  ctx.fillStyle = 'rgb(80, 80, 255)';
+  ctx.fillText(text, cx, cy);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+const textTexture = createTextTexture();
+
+// 4-sided pyramid frustum stud (one per foot of width, two rows).
+const STUD_TOP_R  = 2.5 / 12 / 2;        // top dia 2.5"
+const STUD_BOT_R  = 5.5 / 12 / 2;        // bottom dia 5.5"
+const STUD_H      = 0.15;                // ~2"
+const studGeo     = new THREE.CylinderGeometry(STUD_TOP_R, STUD_BOT_R, STUD_H, 4, 1, false, Math.PI/4);
+const studMat     = new THREE.MeshPhongMaterial({ color: 0x7a8696, flatShading: true });
+const studEdgeGeo = new THREE.EdgesGeometry(studGeo);
+
+function makePyramidStud(x, z) {
+  const stud = new THREE.Mesh(studGeo, studMat);
+  stud.position.set(x, STUD_H/2, z);
+  stud.castShadow = true;
+  stud.receiveShadow = true;
+  stud.add(new THREE.LineSegments(studEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })));
+  return stud;
+}
+
+// Studs for a regular block: pyramid frustums on a 1 ft grid, two rows 6" from edge.
+function createStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < Math.floor(width); i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  return group;
+}
+
+// Studs for an End block: 4 pyramid studs in the straight section, plus the
+// big cone stud at the rounded end (the corner pivot).
+const ROUND_STUD_TOP_R = 8.5 / 12 / 2;   // 8.5" dia at top
+const ROUND_STUD_BOT_R = 1.0 / 2;        // 1 ft dia at base
+const ROUND_STUD_H     = 0.25;           // ~3"
+const roundStudGeo     = new THREE.CylinderGeometry(ROUND_STUD_TOP_R, ROUND_STUD_BOT_R, ROUND_STUD_H, 16, 1);
+const roundStudEdgeGeo = new THREE.EdgesGeometry(roundStudGeo);
+
+function createEndStudsGroup(width, depth) {
+  const group = new THREE.Group();
+  const startX = -width/2 + 0.5;
+  for (let row = 0; row < 2; row++) {
+    const z = (row === 0) ? -depth/2 + 0.5 : depth/2 - 0.5;
+    for (let i = 0; i < 4; i++) {
+      group.add(makePyramidStud(startX + i, z));
+    }
+  }
+  // Big cone stud: centered exactly on the arc axis of the rounded protrusion
+  // (local x = width/2 - depth/2). This is the pivot axis, so any orientation
+  // of an End block placed at the same pivot puts its cone in the same world
+  // (x, z) — the cones stack as a single vertical column up the corner.
+  const roundStud = new THREE.Mesh(roundStudGeo, studMat);
+  roundStud.position.set(width/2 - depth/2, ROUND_STUD_H/2, 0);
+  roundStud.castShadow = true;
+  roundStud.receiveShadow = true;
+  roundStud.add(new THREE.LineSegments(
+    roundStudEdgeGeo, new THREE.LineBasicMaterial({ color: 0x404040 })
+  ));
+  group.add(roundStud);
+  return group;
+}
+
+// Extruded geometry for the End block — flat back/sides on -X, rounded
+// half-cylinder protrusion on +X. Centered on local origin in all three axes,
+// so block.position = block center.
+function createEndGeometry(width, height, depth) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width/2, -height/2);
+  shape.lineTo(width/2 - depth/2, -height/2);
+  shape.absarc(width/2 - depth/2, 0, depth/2, -Math.PI/2, Math.PI/2, false);
+  shape.lineTo(-width/2, height/2);
+  shape.lineTo(-width/2, -height/2);
+
+  const geo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(
+    -(bb.min.x + bb.max.x) / 2,
+    -(bb.min.y + bb.max.y) / 2,
+    -(bb.min.z + bb.max.z) / 2
+  );
+  return geo;
+}
+
+// Build a single block mesh from a spec.
+const allBlocks = [];
+function createBlockMesh(spec) {
+  const width = TYPE_WIDTH[spec.type];
+  const isEnd = spec.type === 'end6';
+  const color = COLORS[spec.type];
+  let geo, materials;
+
+  if (isEnd) {
+    geo = createEndGeometry(width, COURSE_H, WALL_T);
+    materials = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+  } else {
+    geo = new THREE.BoxGeometry(width, COURSE_H, WALL_T);
+    // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z. Apply debossed text to
+    // the four side faces (±X long ends + ±Z front/back).
+    materials = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+      if (i === 0 || i === 1 || i === 4 || i === 5) {
+        const tex = textTexture.clone();
+        tex.center.set(0, 0);
+        tex.repeat.set(1.5, 1.5);
+        const off = (1.5 - 1) / (2 * 1.5);
+        tex.offset.set(off, off);
+        tex.needsUpdate = true;
+        m.normalMap = tex;
+        m.normalScale = new THREE.Vector2(2.2, -2.2);
+      }
+      materials.push(m);
+    }
+  }
+
+  const mesh = new THREE.Mesh(geo, materials);
+  mesh.position.set(spec.x, spec.y, spec.z);
+  mesh.rotation.y = spec.ry;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { spec };
+
+  // Top course is cast with a flat top — no studs, including the corner cone.
+  if (spec.course < N_COURSES - 1) {
+    const studs = isEnd
+      ? createEndStudsGroup(width, WALL_T)
+      : createStudsGroup(width, WALL_T);
+    studs.position.y = COURSE_H / 2;
+    mesh.add(studs);
+  }
+
+  mesh.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x1a202c, transparent: true, opacity: 0.78 })
+  ));
+
+  allBlocks.push(mesh);
+  return mesh;
+}
+
+// ============================================================
+// SCENE
+// ============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef2f7);
+scene.fog = new THREE.Fog(0xeef2f7, 100, 320);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 600);
+const targetPoint = new THREE.Vector3(3, 2, 4);
+camera.position.set(48, 36, 54);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.78);
+dirLight.position.set(25, 60, 35);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -50;
+dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50;
+dirLight.shadow.camera.bottom = -50;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 160;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xb8d4f0, 0.32);
+fillLight.position.set(-25, 25, -10);
+scene.add(fillLight);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshLambertMaterial({ color: 0xdce3eb })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(90, 45, 0x94a3b8, 0xc4cdd6);
+grid.position.set(3, 0, 4);
+grid.material.opacity = 0.6;
+grid.material.transparent = true;
+scene.add(grid);
+
+// Footprint outlines on ground.
+const footprintObjects = [];
+function addFootprint(geo, x, z, ry = 0) {
+  const o = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x475569 })
+  );
+  o.position.set(x, 0.01, z);
+  o.rotation.y = ry;
+  scene.add(o);
+  footprintObjects.push(o);
+}
+function populateFootprints() {
+  footprintObjects.forEach(o => scene.remove(o));
+  footprintObjects.length = 0;
+
+  const half = ARM_LEN / 2;
+  const specs = [
+    { w: faceLength, d: WALL_T, x: 0, z: 1, ry: 0 },
+    { w: ARM_LEN, d: WALL_T, ry: -Math.PI / 4,
+      x: TANGENT.x + half * ARM_AXIS.x, z: TANGENT.z + half * ARM_AXIS.z },
+  ];
+  for (const s of specs) {
+    addFootprint(new THREE.BoxGeometry(s.w, 0.02, s.d), s.x, s.z, s.ry);
+    if (state.opposing) {
+      addFootprint(new THREE.BoxGeometry(s.w, 0.02, s.d), s.x, -WALL_GAP - s.z, -s.ry);
+    }
+  }
+}
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(targetPoint);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 6;
+controls.maxDistance = 200;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.update();
+
+// Build the wall.
+const courseGroups = Array.from({ length: N_COURSES }, () => new THREE.Group());
+courseGroups.forEach(g => scene.add(g));
+
+function buildWall() {
+  updatePivots();
+  courseGroups.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
+  allBlocks.length = 0;
+  populateLayout();
+  BLOCKS.forEach(spec => courseGroups[spec.course].add(createBlockMesh(spec)));
+  populateFootprints();
+  updateLegend();
+  applyVisibility();
+  updateLayout();
+}
+buildWall();
+
+// ============================================================
+// UI: legend, toggles, camera, tooltip
+// ============================================================
+function updateLegend() {
+  const order = ['end6', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
+  // Split by finish: courses below the top are standard (studded); the cast-flat
+  // top course is flat-top (no studs).
+  const standard = {}, flat = {};
+  BLOCKS.forEach(b => {
+    const bucket = (b.course < N_COURSES - 1) ? standard : flat;
+    bucket[b.type] = (bucket[b.type] || 0) + 1;
+  });
+
+  function renderGroup(title, counts) {
+    let rows = '', subtotal = 0;
+    order.forEach(k => {
+      if (!counts[k]) return;
+      subtotal += counts[k];
+      const colorHex = '#' + COLORS[k].toString(16).padStart(6, '0');
+      rows += `
+        <div class="legend-row">
+          <div class="legend-color" style="background:${colorHex}"></div>
+          <div class="legend-label">${TYPE_NAMES[k]}</div>
+          <div class="legend-count">${counts[k]}</div>
+        </div>`;
+    });
+    if (!rows) return '';
+    return `<div class="legend-group-title">${title}</div>${rows}
+      <div class="legend-subtotal"><span>Subtotal</span><span class="count">${subtotal}</span></div>`;
+  }
+
+  document.getElementById('legendBody').innerHTML =
+    renderGroup('Standard — studded', standard) +
+    renderGroup('Flat-top — cast flat', flat) +
+    `<div class="legend-total">
+      <span class="label">Total blocks</span>
+      <span class="count">${BLOCKS.length}</span>
+    </div>`;
+}
+
+function updateLayout() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
+  }
+}
+function applyVisibility() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].children.forEach(mesh => {
+      const s = mesh.userData.spec;
+      if (!s) return;
+      mesh.visible = state.courseVisible[s.course] && state.sectionVisible[s.section];
+    });
+  }
+}
+
+document.querySelectorAll('[data-course]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const i = parseInt(e.currentTarget.dataset.course);
+    state.courseVisible[i] = !state.courseVisible[i];
+    e.currentTarget.classList.toggle('active', state.courseVisible[i]);
+    applyVisibility();
+  });
+});
+document.querySelectorAll('[data-section]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const key = e.currentTarget.dataset.section;
+    state.sectionVisible[key] = !state.sectionVisible[key];
+    e.currentTarget.classList.toggle('active', state.sectionVisible[key]);
+    applyVisibility();
+  });
+});
+document.getElementById('explodeToggle').addEventListener('click', e => {
+  state.exploded = !state.exploded;
+  e.currentTarget.classList.toggle('active', state.exploded);
+  updateLayout();
+});
+const dimsBase = document.getElementById('dimsLabel').textContent;
+document.getElementById('opposingToggle').addEventListener('click', e => {
+  state.opposing = !state.opposing;
+  e.currentTarget.classList.toggle('active', state.opposing);
+  buildWall();
+  grid.position.set(3, 0, state.opposing ? -WALL_GAP / 2 : 4);
+  document.getElementById('dimsLabel').textContent =
+    dimsBase + (state.opposing ? ` · opposing pair · ${WALL_GAP}' channel · arms splay into a Y` : '');
+  const activeView = document.querySelector('[data-view].active');
+  animateCamera(getPresets()[activeView ? activeView.dataset.view : 'iso']);
+});
+document.getElementById('resetToggle').addEventListener('click', () => {
+  state.exploded = false;
+  document.getElementById('explodeToggle').classList.remove('active');
+  state.courseVisible = [true, true];
+  state.sectionVisible = { 'face': true, 'arm': true };
+  document.querySelectorAll('[data-course], [data-section]').forEach(b => b.classList.add('active'));
+  applyVisibility();
+  animateCamera(getPresets().iso);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-view="iso"]').classList.add('active');
+  updateLayout();
+});
+
+function getPresets() {
+  if (!state.opposing) {
+    return {
+      iso:   { pos: new THREE.Vector3(48, 36, 54),   target: new THREE.Vector3(3, 2, 4) },
+      top:   { pos: new THREE.Vector3( 3, 95, 4.001), target: new THREE.Vector3(3, 0, 4) },
+      front: { pos: new THREE.Vector3( 3, 12, -52),  target: new THREE.Vector3(3, 2, 4) },
+      side:  { pos: new THREE.Vector3(64,  9, 4),    target: new THREE.Vector3(3, 2, 4) },
+    };
+  }
+  // The mirrored pair is centered near x = 3, z = -WALL_GAP/2.
+  const zc = -WALL_GAP / 2;
+  return {
+    iso:   { pos: new THREE.Vector3(54, 44, 58),          target: new THREE.Vector3(3, 2, zc) },
+    top:   { pos: new THREE.Vector3( 3, 120, zc + 0.001), target: new THREE.Vector3(3, 0, zc) },
+    front: { pos: new THREE.Vector3( 3, 14, -WALL_GAP - 58), target: new THREE.Vector3(3, 2, zc) },
+    side:  { pos: new THREE.Vector3(72,  9, zc),          target: new THREE.Vector3(3, 2, zc) },
+  };
+}
+function animateCamera(preset, duration = 600) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const startTime = performance.now();
+  function step() {
+    const t = Math.min((performance.now() - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(startPos, preset.pos, eased);
+    controls.target.lerpVectors(startTarget, preset.target, eased);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    animateCamera(getPresets()[e.currentTarget.dataset.view]);
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+  });
+});
+
+// Hover tooltip (desktop only).
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let isTouch = false;
+window.addEventListener('touchstart', () => { isTouch = true; }, { once: true });
+
+function findBlockAncestor(o) {
+  while (o && !o.userData?.spec) o = o.parent;
+  return o;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+  if (isTouch) return;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(allBlocks, true);
+  if (intersects.length > 0) {
+    const block = findBlockAncestor(intersects[0].object);
+    if (block && block.visible) {
+      const s = block.userData.spec;
+      const sectionLabel = s.section === 'face' ? 'Straight Run' : '45° Arm';
+      const finishLabel = s.course < N_COURSES - 1 ? '' : ' · flat top';
+      tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${sectionLabel} · C${s.course + 1}${finishLabel}${s.wall === 'B' ? ' · Wall B' : ''}`;
+      tooltip.style.left = e.clientX + 'px';
+      tooltip.style.top = e.clientY + 'px';
+      tooltip.style.display = 'block';
+      return;
+    }
+  }
+  tooltip.style.display = 'none';
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+  tooltip.style.display = 'none';
+});
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
+
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+</body>
+</html>
