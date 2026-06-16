@@ -33,6 +33,24 @@
   #header .dims { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
   #header .stack { margin-left: auto; font-size: 11px; color: #718096; font-family: 'SF Mono', Menlo, monospace; }
 
+  /* Mobile-only panel toggle (hidden on desktop). */
+  #uiToggle {
+    display: none;
+    margin-left: auto;
+    align-items: center;
+    justify-content: center;
+    width: 42px; height: 34px;
+    border-radius: 9px;
+    background: rgba(15,23,42,0.05);
+    border: 1px solid rgba(15,23,42,0.12);
+    color: #2d3748;
+    font-size: 17px; line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #uiToggle:active { transform: scale(0.96); }
+
   .panel {
     position: fixed;
     background: rgba(255,255,255,0.92);
@@ -149,9 +167,14 @@
   }
 
   @media (max-width: 768px) {
-    #header h1 { font-size: 13px; }
-    #header .dims { font-size: 11px; }
+    #header h1 { font-size: 13px; flex-shrink: 0; }
+    #header .dims { font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #header .stack { display: none; }
+    #uiToggle { display: inline-flex; }
+    /* Collapsed by default on mobile — tap the header button to reveal the panels. */
+    body.ui-collapsed #legend,
+    body.ui-collapsed #controls,
+    body.ui-collapsed #cameraBtns { display: none; }
     #legend { top: 56px; right: 8px; min-width: 0; max-width: 50%; padding: 10px; }
     #legend .legend-row { font-size: 11px; padding: 3px 0; gap: 8px; }
     #legend .legend-color { width: 22px; height: 12px; }
@@ -168,12 +191,13 @@
   }
 </style>
 </head>
-<body>
+<body class="ui-collapsed">
 
 <div id="header">
   <h1>Six-Course Wing Wall</h1>
   <div class="dims" id="dimsLabel">6 courses complete · 24' face · wings ≈31° · primary caps at C4 · flat-top crown</div>
   <div class="stack">building course-by-course · corner rounds = wing pivots</div>
+  <button id="uiToggle" aria-label="Show or hide panels">☰</button>
 </div>
 
 <div id="legend" class="panel">
@@ -200,6 +224,7 @@
   <div class="btn-row">
     <button class="btn active" id="opposingToggle">Opposing Wall</button>
     <button class="btn active" id="deckToggle">Bridge Deck</button>
+    <button class="btn active" id="beamToggle">I-Beams</button>
   </div>
   <div class="btn-row">
     <button class="btn" id="explodeToggle">Explode</button>
@@ -288,13 +313,24 @@ const N_PLANKS = 15;
 const PLANK_X  = 21;          // plank length — across the roadway (ft)
 const PLANK_Z  = 4;           // plank width — tiles along the 60-ft span (ft)
 const PLANK_T  = 8 / 12;      // plank thickness — along Y (ft) = 8"
-const DECK_Y   = 4 * COURSE_H; // planks rest on the Course-4 cap (y = 8)
+// The planks ride on four W-36 steel I-beams that bear (through 6" bearing pads)
+// on the saddles, lifting the deck top to ~2" proud of the C6 wing tops
+// (6" bearing + 36" beam + 8" deck = 50" over the 48" valley). Beams are set 8" in
+// from the deck ends, leaving an 8" strip of saddle where a plank stands vertically
+// as a closure (keeps backfill from spilling between the beams under the deck).
+const CAP_Y       = 4 * COURSE_H;        // saddle top (Course-4 cap) — y = 8
+const BEARING_T   = 6 / 12;               // bearing-pad thickness — 6" (plans: 5.5–6.25")
+const BEAM_DEPTH  = 3;                    // W-36 nominal depth — 36"
+const BEAM_FLANGE = 1;                    // flange width — 12"
+const BEAM_INSET  = 8 / 12;               // beam end set-back / closure thickness — 8"
+const DECK_Y      = CAP_Y + BEARING_T + BEAM_DEPTH; // deck on beams on bearings — y = 11.5
 
 // UI state — hoisted so buildWall() can re-apply it after rebuilding meshes.
 const state = {
   exploded: false,
   opposing: true,
   deck: true,
+  beams: true,
   courseVisible: [true, true, true, true, true, true],
   sectionVisible: { 'face': true, 'back': true, 'wing-L': true, 'wing-R': true },
 };
@@ -753,39 +789,92 @@ function buildWall() {
 }
 
 // ============================================================
-// BRIDGE DECK — single file of 15 transverse planks bridging the Course-4 caps.
+// STEEL BEAMS + BRIDGE DECK bridging the two Course-4 saddles.
 // ============================================================
+const DECK_LEN  = PLANK_Z * N_PLANKS;     // 60 ft
+const DECK_ZC   = WALL_T - DECK_LEN / 2;  // deck/beam centerline z = -28
+const ROAD_HALF = PLANK_X / 2;            // 10.5 ft
+
+// Four W-36 I-beams (3 boxes each: top flange, bottom flange, web), on bearing pads.
+const steelMat   = new THREE.MeshStandardMaterial({ color: 0x8f97a1, metalness: 0.3, roughness: 0.6 });
+const bearingMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, metalness: 0.1, roughness: 0.85 });
+function createBeam(length) {
+  const g = new THREE.Group();
+  const flThk = 0.125, webThk = 0.1, webH = BEAM_DEPTH - 2 * flThk;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(BEAM_FLANGE, flThk, length), steelMat);
+  const bot = new THREE.Mesh(new THREE.BoxGeometry(BEAM_FLANGE, flThk, length), steelMat);
+  const web = new THREE.Mesh(new THREE.BoxGeometry(webThk, webH, length), steelMat);
+  top.position.y =  (BEAM_DEPTH - flThk) / 2;
+  bot.position.y = -(BEAM_DEPTH - flThk) / 2;
+  [top, bot, web].forEach(m => { m.castShadow = true; m.receiveShadow = true; g.add(m); });
+  return g;
+}
+const beamGroup = new THREE.Group();
+scene.add(beamGroup);
+function buildBeams() {
+  while (beamGroup.children.length) beamGroup.remove(beamGroup.children[0]);
+  const beamLen = DECK_LEN - 2 * BEAM_INSET;                          // 8" in from each deck end
+  const xs = [-ROAD_HALF, -ROAD_HALF / 3, ROAD_HALF / 3, ROAD_HALF];  // 4 across the 21' roadway
+  for (const x of xs) {
+    const beam = createBeam(beamLen);
+    beam.position.set(x, CAP_Y + BEARING_T + BEAM_DEPTH / 2, DECK_ZC);
+    beam.userData = { spec: { type: 'beam', beam: true } };
+    beamGroup.add(beam);
+    // 6" bearing pad under each beam end, seated on the saddle.
+    for (const pz of [DECK_ZC + beamLen / 2 - 0.5, DECK_ZC - beamLen / 2 + 0.5]) {
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(1.25, BEARING_T, 1.0), bearingMat);
+      pad.position.set(x, CAP_Y + BEARING_T / 2, pz);
+      pad.castShadow = true; pad.receiveShadow = true;
+      pad.userData = { spec: { type: 'bearing', bearing: true } };
+      beamGroup.add(pad);
+    }
+  }
+}
+buildBeams();
+beamGroup.visible = state.beams;
+
 const deckGroup = new THREE.Group();
 scene.add(deckGroup);
 const deckPlanks = [];
 function buildDeck() {
   while (deckGroup.children.length) deckGroup.remove(deckGroup.children[0]);
   deckPlanks.length = 0;
-  // 15 planks laid 4 ft apart along Z, tiling the 60-ft span. Plank 0 bears ~2 ft
-  // on wall A's cap (z 0..2); plank 14 reaches wall B's cap. Each runs 21 ft in X.
+  const plankMat = () => new THREE.MeshStandardMaterial({
+    map: concreteTexture, color: 0xffffff, roughness: 0.96, metalness: 0.0,
+  });
+  const edge = (geo) => new THREE.LineSegments(
+    new THREE.EdgesGeometry(geo),
+    new THREE.LineBasicMaterial({ color: 0x5b6470, transparent: true, opacity: 0.55 })
+  );
+  // 15 transverse planks tiling the 60-ft span, riding on the beams.
   for (let i = 0; i < N_PLANKS; i++) {
-    const z = WALL_T - PLANK_Z/2 - i * PLANK_Z;   // centers 0, -4, -8, … , -56
+    const z = WALL_T - PLANK_Z / 2 - i * PLANK_Z;   // centers 0, -4, … , -56
     const geo = new THREE.BoxGeometry(PLANK_X, PLANK_T, PLANK_Z);
-    const mat = new THREE.MeshStandardMaterial({
-      map: concreteTexture, color: 0xffffff, roughness: 0.96, metalness: 0.0,
-    });
-    const plank = new THREE.Mesh(geo, mat);
-    plank.position.set(0, DECK_Y + PLANK_T/2, z);
-    plank.castShadow = true;
-    plank.receiveShadow = true;
+    const plank = new THREE.Mesh(geo, plankMat());
+    plank.position.set(0, DECK_Y + PLANK_T / 2, z);
+    plank.castShadow = true; plank.receiveShadow = true;
     plank.userData = { spec: { type: 'plank', section: 'deck', plank: true } };
-    plank.add(new THREE.LineSegments(
-      new THREE.EdgesGeometry(geo),
-      new THREE.LineBasicMaterial({ color: 0x5b6470, transparent: true, opacity: 0.55 })
-    ));
+    plank.add(edge(geo));
     deckGroup.add(plank);
     deckPlanks.push(plank);
+  }
+  // Two vertical closure planks: 8" thick, filling the saddle strip at each end,
+  // standing the 36" beam depth (cap up to the deck underside).
+  for (const cz of [WALL_T - BEAM_INSET / 2, (WALL_T - DECK_LEN) + BEAM_INSET / 2]) {
+    const geo = new THREE.BoxGeometry(PLANK_X, DECK_Y - CAP_Y, BEAM_INSET);
+    const closure = new THREE.Mesh(geo, plankMat());
+    closure.position.set(0, (CAP_Y + DECK_Y) / 2, cz);
+    closure.castShadow = true; closure.receiveShadow = true;
+    closure.userData = { spec: { type: 'closure', section: 'deck', closure: true } };
+    closure.add(edge(geo));
+    deckGroup.add(closure);
+    deckPlanks.push(closure);
   }
 }
 buildDeck();
 deckGroup.visible = state.deck;
 
-// Build the wall now that the deck group exists (updateLayout moves both).
+// Build the wall now that the deck/beam groups exist (updateLayout moves them).
 buildWall();
 
 // ============================================================
@@ -822,6 +911,11 @@ function updateLegend() {
 
   const deckLine = state.deck
     ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck planks (21'×4'×8")</span><span class="count">15</span></div>`
+      + `<div class="legend-subtotal"><span>Closure planks (vertical)</span><span class="count">2</span></div>`
+    : '';
+  const beamLine = state.beams
+    ? `<div class="legend-subtotal"${state.deck ? '' : ' style="margin-top:8px"'}><span>W-36 I-beams</span><span class="count">4</span></div>`
+      + `<div class="legend-subtotal"><span>Bearing pads (6")</span><span class="count">8</span></div>`
     : '';
   document.getElementById('legendBody').innerHTML =
     renderGroup('Standard — studded', standard) +
@@ -829,16 +923,18 @@ function updateLegend() {
     `<div class="legend-total">
       <span class="label">Total blocks</span>
       <span class="count">${BLOCKS.length}</span>
-    </div>` + deckLine;
+    </div>` + deckLine + beamLine;
 }
 
 function updateLayout() {
   for (let i = 0; i < courseGroups.length; i++) {
     courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
   }
-  // The deck rides up with the course it bears on (C4 = index 3) so it stays
-  // seated on its caps when the courses explode.
-  deckGroup.position.y = state.exploded ? 3 * EXPLODE_GAP : 0;
+  // The beams + deck ride up with the course they bear on (C4 = index 3) so the
+  // bridge stays seated on its caps when the courses explode.
+  const lift = state.exploded ? 3 * EXPLODE_GAP : 0;
+  beamGroup.position.y = lift;
+  deckGroup.position.y = lift;
 }
 function applyVisibility() {
   for (let i = 0; i < courseGroups.length; i++) {
@@ -892,6 +988,17 @@ document.getElementById('deckToggle').addEventListener('click', e => {
   e.currentTarget.classList.toggle('active', state.deck);
   deckGroup.visible = state.deck;
   updateLegend();
+});
+document.getElementById('beamToggle').addEventListener('click', e => {
+  state.beams = !state.beams;
+  e.currentTarget.classList.toggle('active', state.beams);
+  beamGroup.visible = state.beams;
+  updateLegend();
+});
+// Mobile-only: collapse/reveal the legend + control panels (no effect on desktop).
+document.getElementById('uiToggle').addEventListener('click', e => {
+  const collapsed = document.body.classList.toggle('ui-collapsed');
+  e.currentTarget.textContent = collapsed ? '☰' : '✕';
 });
 document.getElementById('resetToggle').addEventListener('click', () => {
   state.exploded = false;
@@ -962,13 +1069,21 @@ renderer.domElement.addEventListener('pointermove', e => {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const targets = state.deck ? allBlocks.concat(deckPlanks) : allBlocks;
+  let targets = allBlocks;
+  if (state.deck)  targets = targets.concat(deckPlanks);
+  if (state.beams) targets = targets.concat(beamGroup.children);
   const intersects = raycaster.intersectObjects(targets, true);
   if (intersects.length > 0) {
     const block = findBlockAncestor(intersects[0].object);
     if (block && block.visible) {
       const s = block.userData.spec;
-      if (s.plank) {
+      if (s.beam) {
+        tooltip.innerHTML = `<strong>W-36 I-beam</strong> · steel girder`;
+      } else if (s.bearing) {
+        tooltip.innerHTML = `<strong>Bearing pad</strong> · 6" (5.5–6.25")`;
+      } else if (s.closure) {
+        tooltip.innerHTML = `<strong>Closure plank</strong> · vertical · seals the saddle`;
+      } else if (s.plank) {
         tooltip.innerHTML = `<strong>Deck plank</strong> · 21' × 4' × 8" precast`;
       } else {
         const sectionLabel = s.section === 'face' ? 'Front Face'
