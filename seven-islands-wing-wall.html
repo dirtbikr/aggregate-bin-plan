@@ -85,6 +85,25 @@
   .legend-total .label { color: #4a5568; }
   .legend-total .count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
 
+  .legend-group-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    margin: 10px 0 4px;
+  }
+  .legend-group-title:first-child { margin-top: 0; }
+  .legend-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding-top: 4px;
+    color: #4a5568;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend-subtotal .count { font-weight: 600; color: #2d3748; }
+
   .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
   .btn-row { margin-top: 6px; }
 
@@ -637,27 +656,40 @@ buildWall();
 // UI: legend, toggles, camera, tooltip
 // ============================================================
 function updateLegend() {
-  const counts = {};
-  BLOCKS.forEach(b => { counts[b.type] = (counts[b.type] || 0) + 1; });
   const order = ['end6', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
-  let html = '', total = 0;
-  order.forEach(k => {
-    if (!counts[k]) return;
-    total += counts[k];
-    const colorHex = '#' + COLORS[k].toString(16).padStart(6, '0');
-    html += `
-      <div class="legend-row">
-        <div class="legend-color" style="background:${colorHex}"></div>
-        <div class="legend-label">${TYPE_NAMES[k]}</div>
-        <div class="legend-count">${counts[k]}</div>
-      </div>`;
+  // Split by finish: courses below the top are standard (studded); the cast-flat
+  // top course is flat-top (no studs).
+  const standard = {}, flat = {};
+  BLOCKS.forEach(b => {
+    const bucket = (b.course < N_COURSES - 1) ? standard : flat;
+    bucket[b.type] = (bucket[b.type] || 0) + 1;
   });
-  html += `
-    <div class="legend-total">
+
+  function renderGroup(title, counts) {
+    let rows = '', subtotal = 0;
+    order.forEach(k => {
+      if (!counts[k]) return;
+      subtotal += counts[k];
+      const colorHex = '#' + COLORS[k].toString(16).padStart(6, '0');
+      rows += `
+        <div class="legend-row">
+          <div class="legend-color" style="background:${colorHex}"></div>
+          <div class="legend-label">${TYPE_NAMES[k]}</div>
+          <div class="legend-count">${counts[k]}</div>
+        </div>`;
+    });
+    if (!rows) return '';
+    return `<div class="legend-group-title">${title}</div>${rows}
+      <div class="legend-subtotal"><span>Subtotal</span><span class="count">${subtotal}</span></div>`;
+  }
+
+  document.getElementById('legendBody').innerHTML =
+    renderGroup('Standard — studded', standard) +
+    renderGroup('Flat-top — cast flat', flat) +
+    `<div class="legend-total">
       <span class="label">Total blocks</span>
-      <span class="count">${total}</span>
+      <span class="count">${BLOCKS.length}</span>
     </div>`;
-  document.getElementById('legendBody').innerHTML = html;
 }
 
 function updateLayout() {
