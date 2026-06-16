@@ -51,6 +51,85 @@
   }
   #uiToggle:active { transform: scale(0.96); }
 
+  /* Pick-list button (header) + full-screen overlay. */
+  #pickListBtn {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    margin-left: 6px;
+    background: #2563eb; color: #fff; border: none;
+    padding: 8px 14px; border-radius: 9px;
+    font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  }
+  #pickListBtn:hover { background: #1d4ed8; }
+  #pickListBtn:active { transform: scale(0.97); }
+
+  #pickList {
+    position: fixed; inset: 0; z-index: 500;
+    background: #eef2f7; color: #1a202c;
+    display: none; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  #pickList.open { display: block; }
+  .pl-top {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .pl-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .pl-close {
+    margin-left: auto; width: 42px; height: 42px; border-radius: 11px;
+    background: rgba(15,23,42,0.06); border: 1px solid rgba(15,23,42,0.12);
+    font-size: 18px; color: #2d3748; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .pl-close:active { transform: scale(0.96); }
+  .pl-wrap { max-width: 720px; margin: 0 auto; padding: 16px 14px 48px; }
+  .pl-summary {
+    background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px;
+    padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .pl-summary-line { font-size: 14px; color: #2d3748; }
+  .pl-dim { color: #94a3b8; }
+  .pl-progress { height: 12px; border-radius: 7px; background: rgba(15,23,42,0.1); overflow: hidden; margin: 12px 0 6px; }
+  .pl-progress-fill { height: 100%; background: #22c55e; transition: width 0.25s ease; }
+  .pl-progress-text { font-size: 13px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  .pl-note { font-size: 12px; color: #718096; margin: 12px 0 4px; line-height: 1.5; }
+  .pl-reset {
+    margin-top: 10px; background: rgba(239,68,68,0.08); color: #b91c1c;
+    border: 1px solid rgba(239,68,68,0.25); border-radius: 9px;
+    padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pl-reset:active { transform: scale(0.97); }
+  .pl-load {
+    background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px;
+    margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .pl-load-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px 10px; }
+  .pl-load-name { font-size: 16px; font-weight: 700; }
+  .pl-load-meta { margin-left: auto; font-size: 13px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  .pl-load-bar { height: 6px; margin: 0 16px; background: rgba(15,23,42,0.08); border-radius: 4px; overflow: hidden; }
+  .pl-load-fill { height: 100%; background: #2563eb; }
+  .pl-rows { padding: 8px; }
+  .pl-row {
+    display: flex; align-items: center; gap: 14px;
+    min-height: 56px; padding: 10px 12px; border-radius: 10px;
+    cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .pl-row:hover { background: rgba(37,99,235,0.05); }
+  .pl-row:active { background: rgba(37,99,235,0.1); }
+  .pl-check {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    border: 2px solid rgba(15,23,42,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff;
+  }
+  .pl-row.done .pl-check { background: #22c55e; border-color: #22c55e; }
+  .pl-row-main { flex: 1; min-width: 0; }
+  .pl-row-label { font-size: 15px; font-weight: 600; color: #1a202c; }
+  .pl-row.done .pl-row-label { text-decoration: line-through; color: #9aa6b4; }
+  .pl-row-sub { font-size: 13px; color: #718096; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
   .panel {
     position: fixed;
     background: rgba(255,255,255,0.92);
@@ -171,6 +250,8 @@
     #header .dims { font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #header .stack { display: none; }
     #uiToggle { display: inline-flex; }
+    #pickListBtn { margin-left: auto; padding: 8px 11px; }
+    #pickListBtn .pl-btn-text { display: none; }
     /* Collapsed by default on mobile — tap the header button to reveal the panels. */
     body.ui-collapsed #legend,
     body.ui-collapsed #controls,
@@ -197,6 +278,7 @@
   <h1>Six-Course Wing Wall</h1>
   <div class="dims" id="dimsLabel">6 courses complete · 24' face · wings ≈31° · primary caps at C4 · flat-top crown</div>
   <div class="stack">building course-by-course · corner rounds = wing pivots</div>
+  <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
 </div>
 
@@ -243,6 +325,8 @@
 </div>
 
 <div id="tooltip"></div>
+
+<div id="pickList"></div>
 
 <script type="importmap">
 {
@@ -1112,6 +1196,111 @@ function onResize() {
 }
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
+
+// ============================================================
+// DELIVERY PICK LIST — loads in build order, ≤ 70k lb, with a saved checklist.
+// ============================================================
+const TRUCK_MAX  = 70000;          // lb per load
+const LB_PER_FT  = 3500 / 6;       // a 6' block = 3500 lb; weight scales with length
+const blockWeight = (type) => TYPE_WIDTH[type] * LB_PER_FT;
+const PICK_KEY = 'sixCourseWall.pickList.v1';
+let picked = {};
+try { picked = JSON.parse(localStorage.getItem(PICK_KEY)) || {}; } catch (e) { picked = {}; }
+function savePicked() { try { localStorage.setItem(PICK_KEY, JSON.stringify(picked)); } catch (e) {} }
+const fmtLb = (n) => Math.round(n).toLocaleString();
+
+// One abutment's blocks, in build order, greedy-packed into ≤ TRUCK_MAX loads.
+function computeLoads() {
+  const wall = BLOCKS.filter(b => !b.wall);
+  const loads = [];
+  let cur = { weight: 0, blocks: [] };
+  for (const b of wall) {
+    const w = blockWeight(b.type);
+    if (cur.blocks.length && cur.weight + w > TRUCK_MAX) { loads.push(cur); cur = { weight: 0, blocks: [] }; }
+    cur.weight += w; cur.blocks.push(b);
+  }
+  if (cur.blocks.length) loads.push(cur);
+  return loads;
+}
+// Group a load's blocks into (course, type) lines, biggest blocks first.
+function loadLines(load) {
+  const map = new Map();
+  for (const b of load.blocks) { const k = b.course + '|' + b.type; map.set(k, (map.get(k) || 0) + 1); }
+  return [...map.entries()].map(([k, count]) => {
+    const [course, type] = k.split('|');
+    return { course: +course, type, count, weight: count * blockWeight(type) };
+  }).sort((a, b) => a.course - b.course || TYPE_WIDTH[b.type] - TYPE_WIDTH[a.type]);
+}
+
+const pickListEl = document.getElementById('pickList');
+function renderPickList() {
+  const loads = computeLoads();
+  let totBlocks = 0, totWeight = 0, gotBlocks = 0;
+  const cards = loads.map((load, li) => {
+    const cs = [...new Set(load.blocks.map(b => b.course + 1))].sort((a, b) => a - b);
+    const courseLabel = cs.length === 1 ? `Course ${cs[0]}` : `Courses ${cs[0]}–${cs[cs.length - 1]}`;
+    const rows = loadLines(load).map(ln => {
+      const key = `L${li}-${ln.course}-${ln.type}`;
+      const done = !!picked[key];
+      totBlocks += ln.count; totWeight += ln.weight; if (done) gotBlocks += ln.count;
+      return `<div class="pl-row${done ? ' done' : ''}" data-key="${key}">
+        <div class="pl-check">${done ? '✓' : ''}</div>
+        <div class="pl-row-main">
+          <div class="pl-row-label">Course ${ln.course + 1} · ${TYPE_NAMES[ln.type]}</div>
+          <div class="pl-row-sub">×${ln.count} · ${fmtLb(ln.weight)} lb</div>
+        </div>
+      </div>`;
+    }).join('');
+    const pct = Math.round(load.weight / TRUCK_MAX * 100);
+    return `<div class="pl-load">
+      <div class="pl-load-head">
+        <div class="pl-load-name">Load ${li + 1}</div>
+        <div class="pl-load-meta">${courseLabel} · ${fmtLb(load.weight)} / ${fmtLb(TRUCK_MAX)} lb</div>
+      </div>
+      <div class="pl-load-bar"><div class="pl-load-fill" style="width:${pct}%"></div></div>
+      <div class="pl-rows">${rows}</div>
+    </div>`;
+  }).join('');
+  const gotPct = totBlocks ? Math.round(gotBlocks / totBlocks * 100) : 0;
+  pickListEl.innerHTML = `
+    <div class="pl-top">
+      <div class="pl-title">Delivery Pick List</div>
+      <button class="pl-close" aria-label="Close">✕</button>
+    </div>
+    <div class="pl-wrap">
+      <div class="pl-summary">
+        <div class="pl-summary-line">One abutment · <strong>${totBlocks}</strong> blocks · <strong>${fmtLb(totWeight)}</strong> lb · <strong>${loads.length}</strong> loads <span class="pl-dim">(≤ ${fmtLb(TRUCK_MAX)} lb each)</span></div>
+        <div class="pl-progress"><div class="pl-progress-fill" style="width:${gotPct}%"></div></div>
+        <div class="pl-progress-text">${gotBlocks} of ${totBlocks} blocks picked up · ${gotPct}%</div>
+        <div class="pl-note">Loads are in build order — build each as it arrives. The opposing abutment is identical (repeat the runs); bridge beams, bearings &amp; deck ship separately.</div>
+        <button class="pl-reset">Reset checklist</button>
+      </div>
+      ${cards}
+    </div>`;
+}
+pickListEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.pl-row');
+  if (row) {
+    const key = row.dataset.key;
+    if (picked[key]) delete picked[key]; else picked[key] = true;
+    savePicked();
+    const st = pickListEl.scrollTop; renderPickList(); pickListEl.scrollTop = st;
+    return;
+  }
+  if (e.target.closest('.pl-close')) { pickListEl.classList.remove('open'); return; }
+  if (e.target.closest('.pl-reset')) {
+    if (confirm('Clear all picked-up checkmarks?')) {
+      picked = {}; savePicked();
+      const st = pickListEl.scrollTop; renderPickList(); pickListEl.scrollTop = st;
+    }
+    return;
+  }
+});
+document.getElementById('pickListBtn').addEventListener('click', () => {
+  renderPickList();
+  pickListEl.classList.add('open');
+  pickListEl.scrollTop = 0;
+});
 
 function tick() {
   requestAnimationFrame(tick);
