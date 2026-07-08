@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Six-Course Wing Wall — Course 1 (24' face, two blocks wide)</title>
+<title>Six-Course Wing Wall — on 1′ transverse footing (24' face)</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -276,7 +276,7 @@
 
 <div id="header">
   <h1>Six-Course Wing Wall</h1>
-  <div class="dims" id="dimsLabel">6 courses complete · 24' face · wings ≈31° · primary caps at C4 · flat-top crown</div>
+  <div class="dims" id="dimsLabel">6 courses on 1′ footing · 24' face · wings ≈31° · primary caps at C4 · flat-top crown</div>
   <div class="stack">building course-by-course · corner rounds = wing pivots</div>
   <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
@@ -290,6 +290,7 @@
 <div id="controls" class="panel">
   <div class="panel-title">View — Courses</div>
   <div class="toggle-row">
+    <button class="btn active" id="footingToggle">F</button>
     <button class="btn active" data-course="0">C1</button>
     <button class="btn active" data-course="1">C2</button>
     <button class="btn active" data-course="2">C3</button>
@@ -376,10 +377,16 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // inner 5' blocks clear the primary back row (steeper than ~34° they bite in).
 //
 // Courses 2–6 will be added in later steps.
+//
+// ── FOOTING ── The finished wall sits on 11 transverse footer blocks
+// (6'×2'×1', a new block type) under the primary rows — see populateLayout.
+// Everything above rides 1 ft higher; wing courses float 1 ft above grade
+// (they bear on backfill in reality).
 
 const COURSE_H = 2;       // each course is 2 ft tall
 const N_COURSES = 6;      // top course (C6) will be cast flat — no studs
 const WALL_T   = 2;       // wall thickness / block depth (ft)
+const FOOTING_H = 1;      // footer blocks are 1 ft tall (6'×2'×1', laid transverse)
 const EXPLODE_GAP = 3;
 
 // Wing deflection from the face line. Tightened to ≈31° so each wing's back-face
@@ -402,12 +409,12 @@ const PLANK_T  = 8 / 12;      // plank thickness — along Y (ft) = 8"
 // (6" bearing + 36" beam + 8" deck = 50" over the 48" valley). Beams are set 8" in
 // from the deck ends, leaving an 8" strip of saddle where a plank stands vertically
 // as a closure (keeps backfill from spilling between the beams under the deck).
-const CAP_Y       = 4 * COURSE_H;        // saddle top (Course-4 cap) — y = 8
+const CAP_Y       = FOOTING_H + 4 * COURSE_H; // saddle top (Course-4 cap) — y = 9
 const BEARING_T   = 6 / 12;               // bearing-pad thickness — 6" (plans: 5.5–6.25")
 const BEAM_DEPTH  = 3;                    // W-36 nominal depth — 36"
 const BEAM_FLANGE = 1;                    // flange width — 12"
 const BEAM_INSET  = 8 / 12;               // beam end set-back / closure thickness — 8"
-const DECK_Y      = CAP_Y + BEARING_T + BEAM_DEPTH; // deck on beams on bearings — y = 11.5
+const DECK_Y      = CAP_Y + BEARING_T + BEAM_DEPTH; // deck on beams on bearings — y = 12.5
 
 // UI state — hoisted so buildWall() can re-apply it after rebuilding meshes.
 const state = {
@@ -415,6 +422,7 @@ const state = {
   opposing: true,
   deck: true,
   beams: true,
+  footing: true,
   courseVisible: [true, true, true, true, true, true],
   sectionVisible: { 'face': true, 'back': true, 'wing-L': true, 'wing-R': true },
 };
@@ -422,14 +430,14 @@ const state = {
 // Soft pastel palette for block lengths, with End block in slate.
 const COLORS = {
   end6: 0x9aa6b4, end4: 0xb6bfca, reg6: 0x7ba7d9, reg5: 0x6dd3c4,
-  reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
+  reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a, footer: 0xb08968,
 };
 const TYPE_NAMES = {
   end6: "6′ End (rounded)", end4: "4′ End (rounded)",
   reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton",
-  reg3: "3′ Beton", reg2: "2′ Beton",
+  reg3: "3′ Beton", reg2: "2′ Beton", footer: "6′ Footer (1′ tall)",
 };
-const TYPE_WIDTH = { end6: 6, end4: 4, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2 };
+const TYPE_WIDTH = { end6: 6, end4: 4, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2, footer: 6 };
 
 // ============================================================
 // WALL LAYOUT — edit here to change the wall
@@ -443,7 +451,7 @@ const TYPE_WIDTH = { end6: 6, end4: 4, reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2:
 
 const BLOCKS = [];
 function block(type, x, z, ry, course, section, flatTop = false) {
-  BLOCKS.push({ type, x, y: course * COURSE_H + COURSE_H/2, z, ry, course, section, flatTop });
+  BLOCKS.push({ type, x, y: FOOTING_H + course * COURSE_H + COURSE_H/2, z, ry, course, section, flatTop });
 }
 function front(type, x, course, ry = 0, flatTop = false) { block(type, x, 1, ry, course, 'face', flatTop); }
 function back(type, x, course, ry = 0)  { block(type, x, 3, ry, course, 'back'); }
@@ -471,6 +479,17 @@ function wingBlock(P, u, n, axial, perp, type, ry, course, section) {
 
 function populateLayout() {
   BLOCKS.length = 0;
+
+  // ───── FOOTING ───── 11 transverse footer blocks (6'×2'×1') under the primary
+  // wall — tight-packed and centered (22' of the 24' base, 1' shy at each end;
+  // those corners are backfilled). Each runs 6' along Z: a 1' lip shows under
+  // the bridge, 4' carries the two-row wall, a 1' lip shows on the approach
+  // side. Their studs share the 1' module, so four of the six rows land in the
+  // C1 grid; one stud sits on each exposed lip.
+  for (let k = -5; k <= 5; k++) {
+    BLOCKS.push({ type: 'footer', x: 2 * k, y: FOOTING_H / 2, z: WALL_T,
+                  ry: Math.PI / 2, course: 0, section: 'footing', footing: true });
+  }
 
   // ───── COURSE 1 (bottom) ─────
   // Front face, L→R: End(round left) · 6' · 2' · 6' · End(round left).
@@ -743,6 +762,7 @@ function createEndGeometry(width, height, depth) {
 const allBlocks = [];
 function createBlockMesh(spec) {
   const width = TYPE_WIDTH[spec.type];
+  const height = spec.footing ? FOOTING_H : COURSE_H;
   const isEnd = spec.type.startsWith('end');
   const color = COLORS[spec.type];
   let geo, materials;
@@ -751,7 +771,7 @@ function createBlockMesh(spec) {
     geo = createEndGeometry(width, COURSE_H, WALL_T);
     materials = new THREE.MeshPhongMaterial({ color, shininess: 8 });
   } else {
-    geo = new THREE.BoxGeometry(width, COURSE_H, WALL_T);
+    geo = new THREE.BoxGeometry(width, height, WALL_T);
     materials = [];
     for (let i = 0; i < 6; i++) {
       const m = new THREE.MeshPhongMaterial({ color, shininess: 8 });
@@ -781,7 +801,7 @@ function createBlockMesh(spec) {
     const studs = isEnd
       ? createEndStudsGroup(width, WALL_T)
       : createStudsGroup(width, WALL_T);
-    studs.position.y = COURSE_H / 2;
+    studs.position.y = height / 2;
     mesh.add(studs);
   }
 
@@ -861,12 +881,16 @@ controls.update();
 // Build the wall.
 const courseGroups = Array.from({ length: N_COURSES }, () => new THREE.Group());
 courseGroups.forEach(g => scene.add(g));
+const footingGroup = new THREE.Group();
+scene.add(footingGroup);
 
 function buildWall() {
   courseGroups.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
+  while (footingGroup.children.length) footingGroup.remove(footingGroup.children[0]);
   allBlocks.length = 0;
   populateLayout();
-  BLOCKS.forEach(spec => courseGroups[spec.course].add(createBlockMesh(spec)));
+  BLOCKS.forEach(spec =>
+    (spec.footing ? footingGroup : courseGroups[spec.course]).add(createBlockMesh(spec)));
   updateLegend();
   applyVisibility();
   updateLayout();
@@ -965,7 +989,7 @@ buildWall();
 // UI: legend, toggles, camera, tooltip
 // ============================================================
 function updateLegend() {
-  const order = ['end6', 'end4', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
+  const order = ['footer', 'end6', 'end4', 'reg6', 'reg5', 'reg4', 'reg3', 'reg2'];
   // Split by finish: courses below the top are standard (studded); the cast-flat
   // top course is flat-top (no studs).
   const standard = {}, flat = {};
@@ -1011,12 +1035,13 @@ function updateLegend() {
 }
 
 function updateLayout() {
+  // Footers stay on the ground; each course lifts one slot above them.
   for (let i = 0; i < courseGroups.length; i++) {
-    courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
+    courseGroups[i].position.y = state.exploded ? (i + 1) * EXPLODE_GAP : 0;
   }
-  // The beams + deck ride up with the course they bear on (C4 = index 3) so the
+  // The beams + deck ride up with the course they bear on (C4) so the
   // bridge stays seated on its caps when the courses explode.
-  const lift = state.exploded ? 3 * EXPLODE_GAP : 0;
+  const lift = state.exploded ? 4 * EXPLODE_GAP : 0;
   beamGroup.position.y = lift;
   deckGroup.position.y = lift;
 }
@@ -1028,6 +1053,7 @@ function applyVisibility() {
       mesh.visible = state.courseVisible[s.course] && state.sectionVisible[s.section];
     });
   }
+  footingGroup.children.forEach(mesh => { mesh.visible = state.footing; });
 }
 
 document.querySelectorAll('[data-course]').forEach(btn => {
@@ -1045,6 +1071,11 @@ document.querySelectorAll('[data-section]').forEach(btn => {
     e.currentTarget.classList.toggle('active', state.sectionVisible[key]);
     applyVisibility();
   });
+});
+document.getElementById('footingToggle').addEventListener('click', e => {
+  state.footing = !state.footing;
+  e.currentTarget.classList.toggle('active', state.footing);
+  applyVisibility();
 });
 document.getElementById('explodeToggle').addEventListener('click', e => {
   state.exploded = !state.exploded;
@@ -1087,9 +1118,10 @@ document.getElementById('uiToggle').addEventListener('click', e => {
 document.getElementById('resetToggle').addEventListener('click', () => {
   state.exploded = false;
   document.getElementById('explodeToggle').classList.remove('active');
+  state.footing = true;
   state.courseVisible = [true, true, true, true, true, true];
   state.sectionVisible = { 'face': true, 'back': true, 'wing-L': true, 'wing-R': true };
-  document.querySelectorAll('[data-course], [data-section]').forEach(b => b.classList.add('active'));
+  document.querySelectorAll('[data-course], [data-section], #footingToggle').forEach(b => b.classList.add('active'));
   applyVisibility();
   animateCamera(getPresets().iso);
   document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
@@ -1169,6 +1201,9 @@ renderer.domElement.addEventListener('pointermove', e => {
         tooltip.innerHTML = `<strong>Closure plank</strong> · vertical · seals the saddle`;
       } else if (s.plank) {
         tooltip.innerHTML = `<strong>Deck plank</strong> · 21' × 4' × 8" precast`;
+      } else if (s.footing) {
+        const wallLabel = s.wall === 'B' ? ' · Wall B' : '';
+        tooltip.innerHTML = `<strong>${TYPE_NAMES.footer}</strong> · Footing · transverse${wallLabel}`;
       } else {
         const sectionLabel = s.section === 'face' ? 'Front Face'
           : s.section === 'back' ? 'Back Row'
@@ -1202,8 +1237,9 @@ window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
 // ============================================================
 const TRUCK_MAX  = 70000;          // lb per load
 const LB_PER_FT  = 3500 / 6;       // a 6' block = 3500 lb; weight scales with length
-const blockWeight = (type) => TYPE_WIDTH[type] * LB_PER_FT;
-const PICK_KEY = 'sixCourseWall.pickList.v1';
+// Footers are half-height (1' vs 2'), so half the weight per foot of length.
+const blockWeight = (type) => TYPE_WIDTH[type] * LB_PER_FT * (type === 'footer' ? FOOTING_H / COURSE_H : 1);
+const PICK_KEY = 'sixCourseWall.pickList.v2';
 let picked = {};
 try { picked = JSON.parse(localStorage.getItem(PICK_KEY)) || {}; } catch (e) { picked = {}; }
 function savePicked() { try { localStorage.setItem(PICK_KEY, JSON.stringify(picked)); } catch (e) {} }
@@ -1225,7 +1261,7 @@ function computeLoads() {
 // Group a load's blocks into (course, type) lines, biggest blocks first.
 function loadLines(load) {
   const map = new Map();
-  for (const b of load.blocks) { const k = b.course + '|' + b.type; map.set(k, (map.get(k) || 0) + 1); }
+  for (const b of load.blocks) { const k = (b.footing ? -1 : b.course) + '|' + b.type; map.set(k, (map.get(k) || 0) + 1); }
   return [...map.entries()].map(([k, count]) => {
     const [course, type] = k.split('|');
     return { course: +course, type, count, weight: count * blockWeight(type) };
@@ -1237,8 +1273,11 @@ function renderPickList() {
   const loads = computeLoads();
   let totBlocks = 0, totWeight = 0, gotBlocks = 0;
   const cards = loads.map((load, li) => {
-    const cs = [...new Set(load.blocks.map(b => b.course + 1))].sort((a, b) => a - b);
-    const courseLabel = cs.length === 1 ? `Course ${cs[0]}` : `Courses ${cs[0]}–${cs[cs.length - 1]}`;
+    const cs = [...new Set(load.blocks.map(b => b.footing ? 0 : b.course + 1))].sort((a, b) => a - b);
+    const csName = c => c === 0 ? 'Footing' : `Course ${c}`;
+    const courseLabel = cs.length === 1 ? csName(cs[0])
+      : cs[0] === 0 ? `Footing–Course ${cs[cs.length - 1]}`
+      : `Courses ${cs[0]}–${cs[cs.length - 1]}`;
     const rows = loadLines(load).map(ln => {
       const key = `L${li}-${ln.course}-${ln.type}`;
       const done = !!picked[key];
@@ -1246,7 +1285,7 @@ function renderPickList() {
       return `<div class="pl-row${done ? ' done' : ''}" data-key="${key}">
         <div class="pl-check">${done ? '✓' : ''}</div>
         <div class="pl-row-main">
-          <div class="pl-row-label">Course ${ln.course + 1} · ${TYPE_NAMES[ln.type]}</div>
+          <div class="pl-row-label">${ln.course < 0 ? 'Footing' : `Course ${ln.course + 1}`} · ${TYPE_NAMES[ln.type]}</div>
           <div class="pl-row-sub">×${ln.count} · ${fmtLb(ln.weight)} lb</div>
         </div>
       </div>`;
