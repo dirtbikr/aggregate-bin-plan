@@ -404,6 +404,10 @@ const N_PLANKS = 15;
 const PLANK_X  = 21;          // plank length — across the roadway (ft)
 const PLANK_Z  = 4;           // plank width — tiles along the 60-ft span (ft)
 const PLANK_T  = 8 / 12;      // plank thickness — along Y (ft) = 8"
+// Vertical closure planks span the clear opening between the wings' rounded
+// corner blocks (rounds at x = ±12, r = 1' → 22' clear), minus a 1.5" gap at
+// each end so backfill can't spill past the plank: 21' 9" overall.
+const CLOSURE_W = 22 - 2 * (1.5 / 12);
 // The planks ride on four W-36 steel I-beams that bear (through 6" bearing pads)
 // on the saddles, lifting the deck top to ~2" proud of the C6 wing tops
 // (6" bearing + 36" beam + 8" deck = 50" over the 48" valley). Beams are set 8" in
@@ -969,7 +973,7 @@ function buildDeck() {
   // Two vertical closure planks: 8" thick, filling the saddle strip at each end,
   // standing the 36" beam depth (cap up to the deck underside).
   for (const cz of [WALL_T - BEAM_INSET / 2, (WALL_T - DECK_LEN) + BEAM_INSET / 2]) {
-    const geo = new THREE.BoxGeometry(PLANK_X, DECK_Y - CAP_Y, BEAM_INSET);
+    const geo = new THREE.BoxGeometry(CLOSURE_W, DECK_Y - CAP_Y, BEAM_INSET);
     const closure = new THREE.Mesh(geo, plankMat());
     closure.position.set(0, (CAP_Y + DECK_Y) / 2, cz);
     closure.castShadow = true; closure.receiveShadow = true;
@@ -1198,7 +1202,7 @@ renderer.domElement.addEventListener('pointermove', e => {
       } else if (s.bearing) {
         tooltip.innerHTML = `<strong>Bearing pad</strong> · 6" (5.5–6.25")`;
       } else if (s.closure) {
-        tooltip.innerHTML = `<strong>Closure plank</strong> · vertical · seals the saddle`;
+        tooltip.innerHTML = `<strong>Closure plank</strong> · vertical · 21′9″ wide · seals the saddle`;
       } else if (s.plank) {
         tooltip.innerHTML = `<strong>Deck plank</strong> · 21' × 4' × 8" precast`;
       } else if (s.footing) {
