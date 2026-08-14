@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>8′ ATV Bridge — 90′ span · 8′ face × 6′ wings · timber deck on two W30 girders</title>
+<title>8′ ATV Bridge — 90′ span · 8′ face × 6′ wings · 7′ timber deck on two W30 girders</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -331,7 +331,7 @@
 
 <div id="header">
   <h1>8′ ATV Bridge</h1>
-  <div class="dims" id="dimsLabel">8' clear face × 8' tall · 6' wings to 11' · 2 girders @ 6' o.c. · 6×8 rough-sawn deck</div>
+  <div class="dims" id="dimsLabel">8' clear face × 8' tall · 6' wings to 11' · 2 girders @ 6' o.c. · 7' 6×8 rough-sawn deck</div>
   <div class="stack">corner rounds zipper the face into the wings, course by course</div>
   <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
@@ -431,12 +431,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 //
 // So the flat face reads 8' between the rounds on one course and 10' pivot to
 // pivot on the next: that 1' step at each end, alternating up the wall, IS the
-// zipper. Above the cap (C5, C6) there is no face left to tie into, so those
-// two courses turn their corners down the wing and alternate 4'/6' End blocks
-// to keep the joints breaking.
+// zipper. Above the cap (C5, C6) there is no face left to tie into and no
+// corner left to turn, so those two courses are plain SQUARE blocks — no
+// rounded castings above C4. Each is a single 6' block sitting centred on the
+// 8' of wing below it, set back 1' at the round and 1' at the tip, and so bedded
+// full-length on the course under it.
 //
-// The 8' clear opening between the rounds is what sets the bridge width — the
-// deck timbers are 8'-0" and land tangent to both corner rounds.
+// The 8' clear opening between the rounds sets the channel; the 7'-0" deck
+// timbers sit centred in it with 6" to spare at each corner round.
 
 const COURSE_H  = 2;        // standard course height (ft)
 const HALF_H    = 1;        // half-block flat-top course (ft)
@@ -472,7 +474,7 @@ const DECK_Y = BEAM_Y;                     // deck timbers start here
 // Deck: rough-sawn full-dimension 6"×8" timbers, 8'-0" long, laid flat and
 // transverse — the 8' length spans the clear opening in one piece, the true 6"
 // thickness fills the 36" saddle left over after the 30" girders.
-const PLANK_LEN   = 2 * CLEAR_HALF;  // 8'-0" — one board spans the deck width
+const PLANK_LEN   = 7;          // 7'-0" — one board spans the deck width
 const PLANK_W     = 8 / 12;     // 8" — laid flat, tiling along the span
 const PLANK_T     = 6 / 12;     // 6" — full rough-sawn thickness
 const PLANK_GAP   = 0.5 / 12;   // 1/2" drainage gap between boards
@@ -511,16 +513,16 @@ const state = {
 // Soft pastel palette. Half-height blocks take a lighter tint of the same hue
 // as their full-height cousin, so "lighter = half height" reads at a glance.
 const COLORS = {
-  end6: 0x9aa6b4, end4: 0xb6bfca, halfEnd6: 0xcbd3dc,
-  reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a, half2: 0xf9bebe,
+  end6: 0x9aa6b4,
+  reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a, half6: 0xafcbe8,
 };
 const TYPE_NAMES = {
-  end6: "6′ End (rounded)", end4: "4′ End (rounded)", halfEnd6: "6′ End Half (1′, rounded)",
-  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton", half2: "2′ Half (1′)",
+  end6: "6′ End (rounded)",
+  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton", half6: "6′ Half (1′, square)",
 };
-const TYPE_WIDTH = { end6: 6, end4: 4, halfEnd6: 6, reg6: 6, reg4: 4, reg2: 2, half2: 2 };
-const TYPE_H     = { halfEnd6: HALF_H, half2: HALF_H };
-const IS_END     = { end6: 1, end4: 1, halfEnd6: 1 };
+const TYPE_WIDTH = { end6: 6, reg6: 6, reg4: 4, reg2: 2, half6: 6 };
+const TYPE_H     = { half6: HALF_H };
+const IS_END     = { end6: 1 };
 const blockH     = (t) => TYPE_H[t] ?? COURSE_H;
 // Distance from an End block's centre to its arc centre (the corner pivot).
 const PIVOT_OFF  = (t) => TYPE_WIDTH[t] / 2 - WALL_T / 2;
@@ -537,9 +539,9 @@ const keyLabel = (k) => {
     + (f === 'plate' ? ' · flat top + bearing plate'
       : f === 'flat' && !TYPE_H[t] ? ' · flat top' : '');
 };
-const STD_ORDER  = ['end6|std', 'end4|std', 'reg6|std', 'reg4|std', 'reg2|std'];
+const STD_ORDER  = ['end6|std', 'reg6|std', 'reg2|std'];
 const CAP_ORDER  = ['reg2|plate', 'reg4|flat'];
-const HALF_ORDER = ['halfEnd6|flat', 'half2|flat'];
+const HALF_ORDER = ['half6|flat'];
 const inches     = (ft) => `${+(ft * 12).toFixed(2)}″`;
 
 // ============================================================
@@ -582,6 +584,13 @@ function wingCourse(course, corner, reg, extra) {
   }
 }
 
+// Above the face wall there is no corner to turn: a plain square block sits
+// centred on the 8' of wing below (axial 0..width), bedded full-length, set back
+// 1' from the round at one end and 1' from the tip at the other.
+function wingCap(course, type, extra) {
+  for (const W of [L, R]) wingBlock(W, TYPE_WIDTH[type] / 2, type, W.regRy, course, extra);
+}
+
 // Both corner End blocks lying in the face, rounds out on the pivots, their 5'
 // bodies meeting at mid-face. 5 + 5 = 10' pivot to pivot — exact, no filler.
 function faceCorners(course, extra) {
@@ -614,9 +623,10 @@ function populateLayout() {
   wingCourse(3, 'end6', 'reg2');                    // studded — C5 stacks on it
 
   // ───── C5, C6 ───── wings only, above the cap. Nothing left to zipper into,
-  // so the corners alternate 4' and 6' End blocks to keep the joints breaking.
-  wingCourse(4, 'end4', 'reg4');                    // wing joint 2' out
-  wingCourse(5, 'halfEnd6', 'half2', { flatTop: true });   // 1' flat cap, joint 4' out
+  // so both courses are square: one 6' block each, centred on the 8' below.
+  // No joints to break, and no rounded castings anywhere above C4.
+  wingCap(4, 'reg6');
+  wingCap(5, 'half6', { flatTop: true });           // 1' square flat cap
 
   // ───── OPPOSING ABUTMENT (toggle) ───── abutment B = abutment A reflected
   // across the channel midplane (x → x, z → -wallGap - z, ry → -ry). The two
@@ -1171,7 +1181,7 @@ function updateLegend() {
 
   const nWalls = state.opposing ? 2 : 1;
   const deckLine = state.deck
-    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck timbers (6×8 rough, 8′)</span><span class="count">${N_PLANKS}</span></div>`
+    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck timbers (6×8 rough, ${PLANK_LEN}′)</span><span class="count">${N_PLANKS}</span></div>`
     : '';
   const beamLine = state.beams
     ? `<div class="legend-subtotal"${state.deck ? '' : ' style="margin-top:8px"'}><span>Girders (${SPAN}′ · ${inches(BEAM_DEPTH)} × ${inches(BEAM_FLANGE)})</span><span class="count">${BEAM_XS.length}</span></div>`
@@ -1396,7 +1406,7 @@ renderer.domElement.addEventListener('pointermove', e => {
       } else if (s.isPlate) {
         tooltip.innerHTML = `<strong>Bearing plate</strong> · ${inches(PLATE_X)} × ${inches(PLATE_Z)} × ${inches(PLATE_T)} · cast in`;
       } else if (s.isPlank) {
-        tooltip.innerHTML = `<strong>Deck timber</strong> · 6″ × 8″ rough-sawn · 8′-0″ · laid flat`;
+        tooltip.innerHTML = `<strong>Deck timber</strong> · 6″ × 8″ rough-sawn · ${PLANK_LEN}′-0″ · laid flat`;
       } else {
         const sectionLabel = s.section === 'face' ? 'Face Wall'
           : s.section === 'wing-L' ? 'Left Wing' : 'Right Wing';
@@ -1492,14 +1502,14 @@ function loadLines(load) {
 }
 
 // Steel and timber — ships separately from the block loads.
-const PLANK_BF = (6 * 8 * (PLANK_LEN * 12)) / 144;          // board feet per timber
+const PLANK_BF = (6 * 8 * (PLANK_LEN * 12)) / 144;          // board feet per timber (28)
 const PLANK_LB = PLANK_LEN * PLANK_W * PLANK_T * 36;        // green hemlock ≈ 36 pcf
 const MATERIALS = [
   { name: `Girder — ${SPAN}′ · ${inches(BEAM_DEPTH)} deep × ${inches(BEAM_FLANGE)} flange`,
     qty: BEAM_XS.length, note: `≈ ${fmtLb(116 * SPAN)} lb each at 116 lb/ft — confirm the actual section` },
   { name: `Bearing plate — ${inches(PLATE_X)} × ${inches(PLATE_Z)} × ${inches(PLATE_T)}`,
     qty: BEAM_XS.length * 2, note: 'cast into the C4 cap blocks — set before pour, one per girder line per abutment' },
-  { name: 'Deck timber — 6″ × 8″ rough-sawn, 8′-0″',
+  { name: `Deck timber — 6″ × 8″ rough-sawn, ${PLANK_LEN}′-0″`,
     qty: N_PLANKS, note: `${fmtLb(N_PLANKS * PLANK_BF)} bd ft · ≈ ${fmtLb(N_PLANKS * PLANK_LB)} lb green · ½″ gap between boards` },
 ];
 
