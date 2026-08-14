@@ -433,9 +433,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // pivot on the next: that 1' step at each end, alternating up the wall, IS the
 // zipper. Above the cap (C5, C6) there is no face left to tie into and no
 // corner left to turn, so those two courses are plain SQUARE blocks — no
-// rounded castings above C4. Each is a single 6' block sitting centred on the
-// 8' of wing below it, set back 1' at the round and 1' at the tip, and so bedded
-// full-length on the course under it.
+// rounded castings above C4. Each is a single 6' block running from the round's
+// tangent out to the tip (axial 1..7), which is where the studs put it: see
+// wingCap().
 //
 // The 8' clear opening between the rounds sets the channel; the 7'-0" deck
 // timbers sit centred in it with 6" to spare at each corner round.
@@ -584,11 +584,17 @@ function wingCourse(course, corner, reg, extra) {
   }
 }
 
-// Above the face wall there is no corner to turn: a plain square block sits
-// centred on the 8' of wing below (axial 0..width), bedded full-length, set back
-// 1' from the round at one end and 1' from the tip at the other.
+// Above the face wall there is no corner to turn: the course is a single square
+// block. Where it starts is set by the studs, not by centring it on the run
+// below. The corner block underneath carries its big cone stud ON the pivot
+// (axial 0, 1' diameter, so it occupies axial -0.5..+0.5); a block set flush to
+// the pivot would have to bed down on half of that cone, which no block can do.
+// Starting at the tangent instead — axial 1 — clears the cone by 6" and still
+// buries every square stud out to the tip: 1.5, 2.5, 3.5, 4.5 on the corner
+// block and 5.5, 6.5 on the 2' beyond it. Nothing is clipped, no square stud is
+// left showing, and the cone stands proud at the corner the way it should.
 function wingCap(course, type, extra) {
-  for (const W of [L, R]) wingBlock(W, TYPE_WIDTH[type] / 2, type, W.regRy, course, extra);
+  for (const W of [L, R]) wingBlock(W, 1 + TYPE_WIDTH[type] / 2, type, W.regRy, course, extra);
 }
 
 // Both corner End blocks lying in the face, rounds out on the pivots, their 5'
@@ -623,8 +629,8 @@ function populateLayout() {
   wingCourse(3, 'end6', 'reg2');                    // studded — C5 stacks on it
 
   // ───── C5, C6 ───── wings only, above the cap. Nothing left to zipper into,
-  // so both courses are square: one 6' block each, centred on the 8' below.
-  // No joints to break, and no rounded castings anywhere above C4.
+  // so both courses are square: one 6' block each, tangent to the corner round
+  // and flush with the tip. No joints to break, no rounded castings above C4.
   wingCap(4, 'reg6');
   wingCap(5, 'half6', { flatTop: true });           // 1' square flat cap
 
