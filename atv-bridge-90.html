@@ -432,10 +432,18 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // So the flat face reads 8' between the rounds on one course and 10' pivot to
 // pivot on the next: that 1' step at each end, alternating up the wall, IS the
 // zipper. Above the cap (C5, C6) there is no face left to tie into and no
-// corner left to turn, so those two courses are plain SQUARE blocks — no
-// rounded castings above C4. Each is a single 6' block running from the round's
-// tangent out to the tip (axial 1..7), which is where the studs put it: see
-// wingCap().
+// corner left to turn — but the corner block below still carries its cone stud
+// on the pivot, so the two top courses close over it instead of standing off:
+//
+//   C5   a 4' End cast FLAT over the round — four square studs on the body, no
+//        cone — drops onto the pivot and buries C4's cone. A 4' regular carries
+//        on to the tip.  [4' End flat | 4']  = axial -1..3, 3..7
+//   C6   6' + 2' half-height flat tops.     [6' half | 2' half] = -1..5, 5..7
+//
+// C6's blocks are square, so the 6' overhangs the rounded corner of the 4' End
+// under it — about 0.4 sq ft in two slivers, one of which stands ~5" proud of
+// the face plane. That is deliberate: a half-height ROUNDED flat top is not a
+// casting that exists, so the square block is what caps the corner.
 //
 // The 8' clear opening between the rounds sets the channel; the 7'-0" deck
 // timbers sit centred in it with 6" to spare at each corner round.
@@ -513,16 +521,21 @@ const state = {
 // Soft pastel palette. Half-height blocks take a lighter tint of the same hue
 // as their full-height cousin, so "lighter = half height" reads at a glance.
 const COLORS = {
-  end6: 0x9aa6b4,
-  reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a, half6: 0xafcbe8,
+  end6: 0x9aa6b4, end4f: 0xb6bfca,
+  reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a,
+  half6: 0xafcbe8, half2: 0xf9bebe,
 };
 const TYPE_NAMES = {
-  end6: "6′ End (rounded)",
-  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton", half6: "6′ Half (1′, square)",
+  end6: "6′ End (rounded)", end4f: "4′ End (flat top, no cone)",
+  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton",
+  half6: "6′ Half (1′, square)", half2: "2′ Half (1′, square)",
 };
-const TYPE_WIDTH = { end6: 6, reg6: 6, reg4: 4, reg2: 2, half6: 6 };
-const TYPE_H     = { half6: HALF_H };
-const IS_END     = { end6: 1 };
+const TYPE_WIDTH = { end6: 6, end4f: 4, reg6: 6, reg4: 4, reg2: 2, half6: 6, half2: 2 };
+const TYPE_H     = { half6: HALF_H, half2: HALF_H };
+const IS_END     = { end6: 1, end4f: 1 };
+// Cast flat over the arc: keeps its four square studs, loses the cone, so the
+// course above can bed down over the cone of the course below.
+const NO_CONE    = { end4f: 1 };
 const blockH     = (t) => TYPE_H[t] ?? COURSE_H;
 // Distance from an End block's centre to its arc centre (the corner pivot).
 const PIVOT_OFF  = (t) => TYPE_WIDTH[t] / 2 - WALL_T / 2;
@@ -539,9 +552,9 @@ const keyLabel = (k) => {
     + (f === 'plate' ? ' · flat top + bearing plate'
       : f === 'flat' && !TYPE_H[t] ? ' · flat top' : '');
 };
-const STD_ORDER  = ['end6|std', 'reg6|std', 'reg2|std'];
+const STD_ORDER  = ['end6|std', 'reg6|std', 'reg4|std', 'reg2|std'];
 const CAP_ORDER  = ['reg2|plate', 'reg4|flat'];
-const HALF_ORDER = ['half6|flat'];
+const TOP_ORDER  = ['end4f|std', 'half6|flat', 'half2|flat'];
 const inches     = (ft) => `${+(ft * 12).toFixed(2)}″`;
 
 // ============================================================
@@ -584,17 +597,16 @@ function wingCourse(course, corner, reg, extra) {
   }
 }
 
-// Above the face wall there is no corner to turn: the course is a single square
-// block. Where it starts is set by the studs, not by centring it on the run
-// below. The corner block underneath carries its big cone stud ON the pivot
-// (axial 0, 1' diameter, so it occupies axial -0.5..+0.5); a block set flush to
-// the pivot would have to bed down on half of that cone, which no block can do.
-// Starting at the tangent instead — axial 1 — clears the cone by 6" and still
-// buries every square stud out to the tip: 1.5, 2.5, 3.5, 4.5 on the corner
-// block and 5.5, 6.5 on the 2' beyond it. Nothing is clipped, no square stud is
-// left showing, and the cone stands proud at the corner the way it should.
-function wingCap(course, type, extra) {
-  for (const W of [L, R]) wingBlock(W, 1 + TYPE_WIDTH[type] / 2, type, W.regRy, course, extra);
+// A run of plain square blocks laid down the wing from `start` (axial) outward.
+// Used for the C6 half-height cap, which starts back at the round's tip.
+function wingRun(course, start, types, extra) {
+  for (const W of [L, R]) {
+    let a = start;
+    for (const t of types) {
+      wingBlock(W, a + TYPE_WIDTH[t] / 2, t, W.regRy, course, extra);
+      a += TYPE_WIDTH[t];
+    }
+  }
 }
 
 // Both corner End blocks lying in the face, rounds out on the pivots, their 5'
@@ -628,11 +640,14 @@ function populateLayout() {
   front('reg2',  3, 3, { flatTop: true, plate: true, plateX: BEAM_XS[1] });
   wingCourse(3, 'end6', 'reg2');                    // studded — C5 stacks on it
 
-  // ───── C5, C6 ───── wings only, above the cap. Nothing left to zipper into,
-  // so both courses are square: one 6' block each, tangent to the corner round
-  // and flush with the tip. No joints to break, no rounded castings above C4.
-  wingCap(4, 'reg6');
-  wingCap(5, 'half6', { flatTop: true });           // 1' square flat cap
+  // ───── C5 ───── the 4' End cast flat over its round sits on the pivot and
+  // buries C4's cone stud; a 4' regular runs out to the tip. Joint 2' out —
+  // breaks C4's joint 4' out, and lands 6" clear of the studs either side.
+  wingCourse(4, 'end4f', 'reg4');
+
+  // ───── C6 ───── half-height flat-top cap, 6' + 2', starting back at the
+  // round's tip so it closes the corner. Joint 4' out — breaks C5's at 2'.
+  wingRun(5, -1, ['half6', 'half2'], { flatTop: true });
 
   // ───── OPPOSING ABUTMENT (toggle) ───── abutment B = abutment A reflected
   // across the channel midplane (x → x, z → -wallGap - z, ry → -ry). The two
@@ -827,7 +842,7 @@ const ROUND_STUD_H     = 0.25;           // ~3"
 const roundStudGeo     = new THREE.CylinderGeometry(ROUND_STUD_TOP_R, ROUND_STUD_BOT_R, ROUND_STUD_H, 16, 1);
 const roundStudEdgeGeo = new THREE.EdgesGeometry(roundStudGeo);
 
-function createEndStudsGroup(width, depth) {
+function createEndStudsGroup(width, depth, withCone = true) {
   const group = new THREE.Group();
   const startX = -width / 2 + 0.5;
   const nBody = Math.round(width - 2);   // studded body columns; the rounded end is 2 ft
@@ -835,6 +850,7 @@ function createEndStudsGroup(width, depth) {
     const z = (row === 0) ? -depth / 2 + 0.5 : depth / 2 - 0.5;
     for (let i = 0; i < nBody; i++) group.add(makePyramidStud(startX + i, z));
   }
+  if (!withCone) return group;          // cast flat over the arc
   const roundStud = new THREE.Mesh(roundStudGeo, studMat);
   roundStud.position.set(width / 2 - depth / 2, ROUND_STUD_H / 2, 0);
   roundStud.castShadow = true;
@@ -919,7 +935,8 @@ function createBlockMesh(spec) {
 
   // Cast-flat tops carry no studs: the C4 cap blocks and the whole C6 half course.
   if (!spec.flatTop) {
-    const studs = isEnd ? createEndStudsGroup(width, WALL_T) : createStudsGroup(width, WALL_T);
+    const studs = isEnd ? createEndStudsGroup(width, WALL_T, !NO_CONE[spec.type])
+                        : createStudsGroup(width, WALL_T);
     studs.position.y = height / 2;
     mesh.add(studs);
   }
@@ -1200,7 +1217,7 @@ function updateLegend() {
   document.getElementById('legendBody').innerHTML =
     renderGroup('Standard — studded', STD_ORDER) +
     renderGroup('C4 cap — cast flat', CAP_ORDER) +
-    renderGroup('Half height (1′) — flat top · new', HALF_ORDER) +
+    renderGroup('Wing top — new castings', TOP_ORDER) +
     `<div class="legend-total">
       <span class="label">Total blocks</span>
       <span class="count">${BLOCKS.length}</span>
@@ -1457,7 +1474,7 @@ const fmtLb = (n) => Math.round(n).toLocaleString();
 
 // Yard reconciliation — nothing taken yet.
 const TAKEN = {};
-const RECON_ORDER = [...STD_ORDER, ...CAP_ORDER, ...HALF_ORDER];
+const RECON_ORDER = [...STD_ORDER, ...CAP_ORDER, ...TOP_ORDER];
 
 // Walk both abutments in build order, consuming the on-site inventory; the
 // positions it can't fill are the blocks still to take.
