@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>8′ ATV Bridge — 90′ span · 8′ face × 6′ wings · 7′ timber deck on two W30 girders</title>
+<title>8′ ATV Bridge — 90′ span · 9′ face × 6′ wings · 8′ timber deck on two W30 girders</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -331,7 +331,7 @@
 
 <div id="header">
   <h1>8′ ATV Bridge</h1>
-  <div class="dims" id="dimsLabel">8' clear face × 8' tall · 6' wings to 11' · 2 girders @ 6' o.c. · 7' 6×8 rough-sawn deck</div>
+  <div class="dims" id="dimsLabel">9' clear face × 8' tall · 6' wings to 11' · 2 girders on pads @ 6' o.c. · 8' 6×8 deck</div>
   <div class="stack">corner rounds zipper the face into the wings, course by course</div>
   <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
@@ -423,13 +423,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // block turns the corner ALTERNATELY into one wall and then the other, so the
 // face and the wings are laced together rather than merely butted:
 //
-//   C1, C3   corner End bodies lie IN THE FACE — the two 5' bodies meet at
-//            mid-face (5 + 5 = 10' pivot to pivot), and each wing is one clean
-//            6' block running off the round's tangent.
+//   C1, C3   corner End bodies lie IN THE FACE. At 11' pivot to pivot the 4' End
+//            is the one that tiles: 3' body + 5' + 3' body = 11' exactly. Each
+//            wing is then one clean 6' block off the round's tangent.
 //   C2, C4   corner End bodies turn DOWN THE WINGS — the face is then a plain
-//            8' row spanning the clear opening between the two rounds.
+//            9' row spanning the clear opening between the two rounds.
 //
-// So the flat face reads 8' between the rounds on one course and 10' pivot to
+// So the flat face reads 9' between the rounds on one course and 11' pivot to
 // pivot on the next: that 1' step at each end, alternating up the wall, IS the
 // zipper. Above the cap (C5, C6) there is no face left to tie into and no
 // corner left to turn — but the corner block below still carries its cone stud
@@ -445,7 +445,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // the face plane. That is deliberate: a half-height ROUNDED flat top is not a
 // casting that exists, so the square block is what caps the corner.
 //
-// The 8' clear opening between the rounds sets the channel; the 7'-0" deck
+// The 9' clear opening between the rounds sets the channel; the 8'-0" deck
 // timbers sit centred in it with 6" to spare at each corner round.
 
 const COURSE_H  = 2;        // standard course height (ft)
@@ -454,44 +454,64 @@ const N_COURSES = 6;        // C1–C4 face + wings, C5–C6 wings only
 const WALL_T    = 2;        // wall thickness / block depth (ft)
 const EXPLODE_GAP = 3;
 
-const CLEAR_HALF = 4;              // half the 8' clear opening between the rounds
-const PIVOT_X    = CLEAR_HALF + 1; // corner round centres, x = ±5
+const CLEAR_HALF = 4.5;            // half the 9' clear opening between the rounds
+const PIVOT_X    = CLEAR_HALF + 1; // corner round centres, x = ±5.5
 const WING_DEG   = 45;             // wing flare off the face line (90° = straight back)
 const WING_LEN   = 6;              // wing length past the corner, ft (blocks run axial 1..7)
 
 // ── Opposing abutment, girders, deck ──
-// 90' girders bearing the full 2' wall depth at each end put the two faces
-// 86' apart. No elastomeric pads: the bottom flange welds to the cast-in plate.
 const SPAN        = 90;         // TRUE girder length (ft) — the number that gets ordered
 const SPAN_SHORT  = 24;         // drawn span with "Short Span" on — VIEW ONLY
-const BEARING     = WALL_T;     // girders bear the full 2' wall depth at each end
 const BEAM_DEPTH  = 30 / 12;    // girder depth — 30"
 const BEAM_FLANGE = 12 / 12;    // flange width — 12"
 const BEAM_XS     = [-3, 3];    // two girders, 6'-0" on centre, 1' deck overhang each side
 
-// Bearing plates cast into the C4 cap blocks — PARAMETERIZED, set to whatever
-// the fabricator specs. Plate positions follow BEAM_XS automatically.
-const PLATE_X = 18 / 12;        // plate width across the face — 18"
-const PLATE_Z = 18 / 12;        // plate depth along the span — 18"
-const PLATE_T =  1 / 12;        // plate thickness — 1"
+// ── CLOSURE SLAB ──
+// An 8" precast slab stands in the back of each bearing seat, tied to the girder
+// ends, so the void under the deck between the girders can be backfilled. The
+// girders are set 8" in from the back of the wall to make room for it, which
+// drops their bearing length from the full 2' to 1'-4".
+const SLAB_T   = 8 / 12;              // slab thickness — 8"
+const BEARING  = WALL_T - SLAB_T;     // girder bears 1'-4"; the back 8" is the slab
+const BEAR_Z   = BEARING / 2;         // bearing centreline, 8" in from the face
 
-const CAP_Y  = 4 * COURSE_H;               // top of the C4 cap = bearing level, y = 8
+// ── BEARINGS ──
+// NOT welded at both ends. 90' of steel moves ~7/8" over a 120°F swing, so the
+// girders sit on elastomeric pads: sole plate welded to the bottom flange, pad,
+// masonry plate cast into the cap. Fixed at abutment A (round holes), free at
+// abutment B (slotted). Pad thickness is a placeholder — size it to the movement.
+const MPLATE_X = 16 / 12, MPLATE_Z = 14 / 12, MPLATE_T = 1 / 12;   // masonry plate, cast in
+const PAD_X    = 12 / 12, PAD_Z    = 12 / 12, PAD_T    = 1.5 / 12; // elastomeric bearing pad
+const SPLATE_X = 14 / 12, SPLATE_Z = 14 / 12, SPLATE_T = 0.5 / 12; // sole plate, welded to the flange
+
+// The 36" from cap to wing top is fully spent by the 30" girder and the 6" deck,
+// so the bearing stack has to come out of the cap: the C4 face course is cast
+// SEAT_DROP low, and pad + sole plate bring the girder soffit back to 8'-0".
+// Everything above is unchanged and the deck still finishes flush with the wings.
+const SEAT_DROP = PAD_T + SPLATE_T;        // 2"
+
+const CAP_Y  = 4 * COURSE_H;               // girder soffit / nominal cap level, y = 8
+const SEAT_Y = CAP_Y - SEAT_DROP;          // cast top of the C4 cap, y = 7'-10"
 const BEAM_Y = CAP_Y + BEAM_DEPTH;         // top of the girders, y = 10.5
 const DECK_Y = BEAM_Y;                     // deck timbers start here
+
+const SLAB_W = 8 + 8 / 12;                 // 8'-8" — widest that clears the C6 wing cap
+const SLAB_H = BEAM_Y - SEAT_Y;            // seat up to the deck soffit — 2'-8"
 
 // Deck: rough-sawn full-dimension 6"×8" timbers, 8'-0" long, laid flat and
 // transverse — the 8' length spans the clear opening in one piece, the true 6"
 // thickness fills the 36" saddle left over after the 30" girders.
-const PLANK_LEN   = 7;          // 7'-0" — one board spans the deck width
+const PLANK_LEN   = 8;          // 8'-0" — one board spans the deck width
 const PLANK_W     = 8 / 12;     // 8" — laid flat, tiling along the span
 const PLANK_T     = 6 / 12;     // 6" — full rough-sawn thickness
 const PLANK_GAP   = 0.5 / 12;   // 1/2" drainage gap between boards
 const PLANK_PITCH = PLANK_W + PLANK_GAP;
-// 127 boards over the true 90'. That is the ORDER quantity and never changes;
-// only the drawn deck follows the view span below.
-const plankCount  = (span) => Math.floor((span + PLANK_GAP) / PLANK_PITCH);
-const deckFront   = (span) => WALL_T - (span - (plankCount(span) * PLANK_PITCH - PLANK_GAP)) / 2;
-const N_PLANKS    = plankCount(SPAN);
+// The deck runs back-of-wall to back-of-wall: the girders no longer reach the
+// back of the seat, so the last 8" at each end lands on top of the closure slab.
+const deckLen     = (span) => span + 2 * SLAB_T;
+const plankCount  = (span) => Math.floor((deckLen(span) + PLANK_GAP) / PLANK_PITCH + 1e-9);
+const deckFront   = (span) => WALL_T - (deckLen(span) - (plankCount(span) * PLANK_PITCH - PLANK_GAP)) / 2;
+const N_PLANKS    = plankCount(SPAN);   // ORDER quantity — never follows the view span
 
 // ── Drawn span (view only) ──
 // 90' of bridge is unmanageable on a phone, so the model opens foreshortened:
@@ -521,18 +541,22 @@ const state = {
 // Soft pastel palette. Half-height blocks take a lighter tint of the same hue
 // as their full-height cousin, so "lighter = half height" reads at a glance.
 const COLORS = {
-  end6: 0x9aa6b4, end4f: 0xb6bfca,
-  reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a,
+  end6: 0x9aa6b4, end4: 0xa6b0bd, end4f: 0xc4ccd6,
+  reg6: 0x7ba7d9, reg5: 0x6dd3c4, reg4: 0xfbbf6c, reg2: 0xf48a8a,
+  reg4s: 0xe0a24a, reg5s: 0x4fb8a8,
   half6: 0xafcbe8, half2: 0xf9bebe,
 };
 const TYPE_NAMES = {
-  end6: "6′ End (rounded)", end4f: "4′ End (flat top, no cone)",
-  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton",
+  end6: "6′ End (rounded)", end4: "4′ End (rounded)", end4f: "4′ End (flat top, no cone)",
+  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton", reg2: "2′ Beton",
+  reg4s: "4′ Beton — bearing seat (1′-10″)", reg5s: "5′ Beton — bearing seat (1′-10″)",
   half6: "6′ Half (1′, square)", half2: "2′ Half (1′, square)",
 };
-const TYPE_WIDTH = { end6: 6, end4f: 4, reg6: 6, reg4: 4, reg2: 2, half6: 6, half2: 2 };
-const TYPE_H     = { half6: HALF_H, half2: HALF_H };
-const IS_END     = { end6: 1, end4f: 1 };
+const TYPE_WIDTH = { end6: 6, end4: 4, end4f: 4, reg6: 6, reg5: 5, reg4: 4, reg2: 2,
+                     reg4s: 4, reg5s: 5, half6: 6, half2: 2 };
+const TYPE_H     = { half6: HALF_H, half2: HALF_H,
+                     reg4s: COURSE_H - SEAT_DROP, reg5s: COURSE_H - SEAT_DROP };
+const IS_END     = { end6: 1, end4: 1, end4f: 1 };
 // Cast flat over the arc: keeps its four square studs, loses the cone, so the
 // course above can bed down over the cone of the course below.
 const NO_CONE    = { end4f: 1 };
@@ -552,8 +576,8 @@ const keyLabel = (k) => {
     + (f === 'plate' ? ' · flat top + bearing plate'
       : f === 'flat' && !TYPE_H[t] ? ' · flat top' : '');
 };
-const STD_ORDER  = ['end6|std', 'reg6|std', 'reg4|std', 'reg2|std'];
-const CAP_ORDER  = ['reg2|plate', 'reg4|flat'];
+const STD_ORDER  = ['end6|std', 'end4|std', 'reg6|std', 'reg5|std', 'reg4|std', 'reg2|std'];
+const CAP_ORDER  = ['reg4s|plate', 'reg5s|plate'];
 const TOP_ORDER  = ['end4f|std', 'half6|flat', 'half2|flat'];
 const inches     = (ft) => `${+(ft * 12).toFixed(2)}″`;
 
@@ -609,35 +633,35 @@ function wingRun(course, start, types, extra) {
   }
 }
 
-// Both corner End blocks lying in the face, rounds out on the pivots, their 5'
-// bodies meeting at mid-face. 5 + 5 = 10' pivot to pivot — exact, no filler.
+// Both corner End blocks lying in the face, rounds out on the pivots. The 4'
+// End's 3' body leaves 5' between them: 3 + 5 + 3 = 11' pivot to pivot, exact.
 function faceCorners(course, extra) {
-  const off = PIVOT_OFF('end6');
-  block('end6',  PIVOT_X - off, 1, 0,       course, 'face', extra);   // round → +X
-  block('end6', -PIVOT_X + off, 1, Math.PI, course, 'face', extra);   // round → −X
+  const off = PIVOT_OFF('end4');
+  block('end4',  PIVOT_X - off, 1, 0,       course, 'face', extra);   // round → +X
+  block('end4', -PIVOT_X + off, 1, Math.PI, course, 'face', extra);   // round → −X
+  block('reg5',  0,             1, 0,       course, 'face', extra);   // mid-face filler
 }
 
 function populateLayout() {
   BLOCKS.length = 0;
 
   // ───── C1 ───── corners in the face; wings are one 6' block each.
-  faceCorners(0);
+  faceCorners(0);                                   // joints at x = ±2.5
   wingCourse(0, null, 'reg6');
 
-  // ───── C2 ───── corners turn down the wings; face is a plain 8' row.
-  front('reg6', -1, 1); front('reg2', 3, 1);        // joint at x = +2
+  // ───── C2 ───── corners turn down the wings; face is a plain 9' row.
+  front('reg5', -2,   1); front('reg4', 2.5, 1);    // joint at x = +0.5
   wingCourse(1, 'end6', 'reg2');                    // wing joint 4' out
 
   // ───── C3 ───── corners back in the face.
-  faceCorners(2);
+  faceCorners(2);                                   // joints at x = ±2.5
   wingCourse(2, null, 'reg6');
 
-  // ───── C4 ───── the cap. Corners down the wings again (so the plated blocks
-  // stay plain rectangles), face is three flat-tops with the girders landing
-  // dead centre on the two 2' end blocks. Joints at ±2 break C3's joint at 0.
-  front('reg2', -3, 3, { flatTop: true, plate: true, plateX: BEAM_XS[0] });
-  front('reg4',  0, 3, { flatTop: true });
-  front('reg2',  3, 3, { flatTop: true, plate: true, plateX: BEAM_XS[1] });
+  // ───── C4 ───── the cap, cast SEAT_DROP low as the bearing seat. Corners stay
+  // down the wings so the plated blocks are plain rectangles. Joint at −0.5 sits
+  // 2' clear of C3's, and each girder lands 10"+ inside its own block.
+  front('reg4s', -2.5, 3, { flatTop: true, plate: true, plateX: BEAM_XS[0] });
+  front('reg5s',  2,   3, { flatTop: true, plate: true, plateX: BEAM_XS[1] });
   wingCourse(3, 'end6', 'reg2');                    // studded — C5 stacks on it
 
   // ───── C5 ───── the 4' End cast flat over its round sits on the pivot and
@@ -889,10 +913,11 @@ function createEndGeometry(width, planD, h) {
   return geo;
 }
 
-// Cast-in bearing plate — a hair proud of the block top so it reads, and so it
-// never z-fights the concrete it is embedded in.
+// Masonry plate — cast into the seat, a hair proud so it reads and never
+// z-fights the concrete it is embedded in. The pad and sole plate above it are
+// built with the girders, since they belong to the steel.
 const plateMat = new THREE.MeshStandardMaterial({ color: 0x6e767f, metalness: 0.45, roughness: 0.55 });
-const plateGeo = new THREE.BoxGeometry(PLATE_X, PLATE_T, PLATE_Z);
+const plateGeo = new THREE.BoxGeometry(MPLATE_X, MPLATE_T, MPLATE_Z);
 const plateEdgeGeo = new THREE.EdgesGeometry(plateGeo);
 
 // Build a single block mesh from a spec.
@@ -944,7 +969,7 @@ function createBlockMesh(spec) {
   // Bearing plate rides along with its cap block so it stays put when exploded.
   if (spec.plate) {
     const plate = new THREE.Mesh(plateGeo, plateMat);
-    plate.position.set(spec.plateX - spec.x, height / 2 - PLATE_T / 2 + 0.012, 0);
+    plate.position.set(spec.plateX - spec.x, height / 2 - MPLATE_T / 2 + 0.012, BEAR_Z - 1);
     plate.castShadow = true;
     plate.receiveShadow = true;
     plate.userData = { spec: { type: 'plate', isPlate: true } };
@@ -1041,10 +1066,12 @@ function buildWall() {
 }
 
 // ============================================================
-// GIRDERS — two 90' W30s welded down to the cast-in bearing plates.
-// No elastomeric pads: the bottom flange sits straight on the plate.
+// GIRDERS + BEARINGS — two 90' W30s on elastomeric bearings, set 8" in from the
+// back of the seat so the closure slab has somewhere to stand. Fixed at
+// abutment A, free to travel at abutment B; ~7/8" of movement over 120°F.
 // ============================================================
 const steelMat = new THREE.MeshStandardMaterial({ color: 0x8f97a1, metalness: 0.3, roughness: 0.6 });
+const padMat   = new THREE.MeshStandardMaterial({ color: 0x23262b, metalness: 0.0, roughness: 0.95 });
 
 function createBeam(length) {
   const g = new THREE.Group();
@@ -1055,13 +1082,26 @@ function createBeam(length) {
   top.position.y =  (BEAM_DEPTH - flThk) / 2;
   bot.position.y = -(BEAM_DEPTH - flThk) / 2;
   [top, bot, web].forEach(m => { m.castShadow = true; m.receiveShadow = true; g.add(m); });
-  // Bearing stiffener over each plate — local ±(len/2 − 1') lands on the plate
-  // centrelines at world z = +1 and z = −87.
-  for (const sz of [length / 2 - 1, -(length / 2 - 1)]) {
+  // Bearing stiffener + sole plate over each bearing. The girder end is at
+  // local ±len/2 and the bearing centreline sits BEAR_Z in from it.
+  for (const end of [1, -1]) {
+    const bz = end * (length / 2 - BEAR_Z);
     const st = new THREE.Mesh(new THREE.BoxGeometry(BEAM_FLANGE, webH, 0.5 / 12), steelMat);
-    st.position.z = sz;
+    st.position.z = bz;
     st.castShadow = true; st.receiveShadow = true;
     g.add(st);
+    // Sole plate, welded to the underside of the bottom flange.
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(SPLATE_X, SPLATE_T, SPLATE_Z), steelMat);
+    sp.position.set(0, -BEAM_DEPTH / 2 - SPLATE_T / 2, bz);
+    sp.castShadow = true; sp.receiveShadow = true;
+    sp.userData = { spec: { type: 'sole', isSole: true } };
+    g.add(sp);
+    // Elastomeric pad between the sole plate and the cast-in masonry plate.
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(PAD_X, PAD_T, PAD_Z), padMat);
+    pad.position.set(0, -BEAM_DEPTH / 2 - SPLATE_T - PAD_T / 2, bz);
+    pad.castShadow = true; pad.receiveShadow = true;
+    pad.userData = { spec: { type: 'pad', isPad: true } };
+    g.add(pad);
   }
   return g;
 }
@@ -1070,7 +1110,7 @@ const beamGroup = new THREE.Group();
 scene.add(beamGroup);
 function buildBeams() {
   while (beamGroup.children.length) beamGroup.remove(beamGroup.children[0]);
-  const beamZC = WALL_T - drawnSpan / 2;
+  const beamZC = BEARING - drawnSpan / 2;   // girder ends 8" in from the back of each seat
   for (const x of BEAM_XS) {
     const beam = createBeam(drawnSpan);
     beam.position.set(x, CAP_Y + BEAM_DEPTH / 2, beamZC);
@@ -1078,8 +1118,29 @@ function buildBeams() {
     beamGroup.add(beam);
   }
 }
+// ── CLOSURE SLAB ── one per abutment, standing in the back 8" of the seat,
+// tied to the girder ends. It retains the fill that goes under the deck between
+// the girders, and the last 8" of decking lands on top of it.
+const concreteMat = new THREE.MeshStandardMaterial({ color: 0xa9a7a1, roughness: 0.95, metalness: 0 });
+const slabGroup = new THREE.Group();
+scene.add(slabGroup);
+function buildSlabs() {
+  while (slabGroup.children.length) slabGroup.remove(slabGroup.children[0]);
+  const geo = new THREE.BoxGeometry(SLAB_W, SLAB_H, SLAB_T);
+  for (const [zc, wall] of [[WALL_T - SLAB_T / 2, 'A'], [-wallGap - WALL_T + SLAB_T / 2, 'B']]) {
+    const slab = new THREE.Mesh(geo, concreteMat);
+    slab.position.set(0, SEAT_Y + SLAB_H / 2, zc);
+    slab.castShadow = true; slab.receiveShadow = true;
+    slab.userData = { spec: { type: 'slab', isSlab: true, wall } };
+    slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: 0x5b6470, transparent: true, opacity: 0.6 })));
+    slabGroup.add(slab);
+  }
+}
+
 buildBeams();
 beamGroup.visible = state.beams;
+buildSlabs();
 
 // ============================================================
 // TIMBER DECK — 6"×8" rough-sawn, 8' long, laid flat and transverse.
@@ -1208,7 +1269,7 @@ function updateLegend() {
     : '';
   const beamLine = state.beams
     ? `<div class="legend-subtotal"${state.deck ? '' : ' style="margin-top:8px"'}><span>Girders (${SPAN}′ · ${inches(BEAM_DEPTH)} × ${inches(BEAM_FLANGE)})</span><span class="count">${BEAM_XS.length}</span></div>`
-      + `<div class="legend-subtotal"><span>Bearing plates (${inches(PLATE_X)}×${inches(PLATE_Z)}×${inches(PLATE_T)})</span><span class="count">${BEAM_XS.length * nWalls}</span></div>`
+      + `<div class="legend-subtotal"><span>Bearings (pad + sole + masonry plate)</span><span class="count">${BEAM_XS.length * nWalls}</span></div>`
     : '';
   // Quantities above are always the real ones — say so while the view is short.
   const spanNote = state.shortSpan && (state.deck || state.beams)
@@ -1221,7 +1282,9 @@ function updateLegend() {
     `<div class="legend-total">
       <span class="label">Total blocks</span>
       <span class="count">${BLOCKS.length}</span>
-    </div>` + deckLine + beamLine + spanNote;
+    </div>` + deckLine + beamLine
+      + `<div class="legend-subtotal"><span>Closure slabs (${SLAB_W.toFixed(2)}′ × ${inches(SLAB_H)} × ${inches(SLAB_T)})</span><span class="count">${nWalls}</span></div>`
+      + spanNote;
 }
 
 function updateLayout() {
@@ -1233,6 +1296,7 @@ function updateLayout() {
   const lift = state.exploded ? 3 * EXPLODE_GAP : 0;
   beamGroup.position.y = lift;
   deckGroup.position.y = lift;
+  slabGroup.position.y = lift;
   placeSpanLabel();
 }
 function applyVisibility() {
@@ -1291,6 +1355,8 @@ document.getElementById('opposingToggle').addEventListener('click', e => {
   state.opposing = !state.opposing;
   e.currentTarget.classList.toggle('active', state.opposing);
   buildWall();
+  buildSlabs();
+  slabGroup.children[1].visible = state.opposing;
   placeScene();
   setDims();
   animateCamera(getPresets()[activeViewKey()]);
@@ -1303,6 +1369,7 @@ document.getElementById('spanToggle').addEventListener('click', e => {
   e.currentTarget.classList.toggle('active', state.shortSpan);
   setSpan(state.shortSpan);
   buildBeams();
+  buildSlabs();
   buildDeck();
   buildWall();
   beamGroup.visible = state.beams;
@@ -1335,7 +1402,7 @@ document.getElementById('resetToggle').addEventListener('click', () => {
     state.shortSpan = true;
     document.getElementById('spanToggle').classList.add('active');
     setSpan(true);
-    buildBeams(); buildDeck(); buildWall();
+    buildBeams(); buildSlabs(); buildDeck(); buildWall();
     beamGroup.visible = state.beams; deckGroup.visible = state.deck;
     placeScene(); setDims();
   }
@@ -1418,6 +1485,7 @@ renderer.domElement.addEventListener('pointermove', e => {
   let targets = allBlocks;
   if (state.deck)  targets = targets.concat(deckPlanks);
   if (state.beams) targets = targets.concat(beamGroup.children);
+  targets = targets.concat(slabGroup.children);
   const intersects = raycaster.intersectObjects(targets, true);
   if (intersects.length > 0) {
     const hit = findBlockAncestor(intersects[0].object);
@@ -1427,7 +1495,13 @@ renderer.domElement.addEventListener('pointermove', e => {
       if (s.isBeam) {
         tooltip.innerHTML = `<strong>Girder</strong> · ${SPAN}′ · ${inches(BEAM_DEPTH)} deep × ${inches(BEAM_FLANGE)} flange · welded to the plates`;
       } else if (s.isPlate) {
-        tooltip.innerHTML = `<strong>Bearing plate</strong> · ${inches(PLATE_X)} × ${inches(PLATE_Z)} × ${inches(PLATE_T)} · cast in`;
+        tooltip.innerHTML = `<strong>Masonry plate</strong> · ${inches(MPLATE_X)} × ${inches(MPLATE_Z)} × ${inches(MPLATE_T)} · cast into the seat`;
+      } else if (s.isPad) {
+        tooltip.innerHTML = `<strong>Bearing pad</strong> · ${inches(PAD_X)} × ${inches(PAD_Z)} × ${inches(PAD_T)} elastomeric`;
+      } else if (s.isSole) {
+        tooltip.innerHTML = `<strong>Sole plate</strong> · ${inches(SPLATE_X)} × ${inches(SPLATE_Z)} × ${inches(SPLATE_T)} · welded to the flange`;
+      } else if (s.isSlab) {
+        tooltip.innerHTML = `<strong>Closure slab</strong> · ${SLAB_W.toFixed(2)}′ × ${inches(SLAB_H)} × ${inches(SLAB_T)} · retains the fill under the deck`;
       } else if (s.isPlank) {
         tooltip.innerHTML = `<strong>Deck timber</strong> · 6″ × 8″ rough-sawn · ${PLANK_LEN}′-0″ · laid flat`;
       } else {
@@ -1530,8 +1604,14 @@ const PLANK_LB = PLANK_LEN * PLANK_W * PLANK_T * 36;        // green hemlock ≈
 const MATERIALS = [
   { name: `Girder — ${SPAN}′ · ${inches(BEAM_DEPTH)} deep × ${inches(BEAM_FLANGE)} flange`,
     qty: BEAM_XS.length, note: `≈ ${fmtLb(116 * SPAN)} lb each at 116 lb/ft — confirm the actual section` },
-  { name: `Bearing plate — ${inches(PLATE_X)} × ${inches(PLATE_Z)} × ${inches(PLATE_T)}`,
-    qty: BEAM_XS.length * 2, note: 'cast into the C4 cap blocks — set before pour, one per girder line per abutment' },
+  { name: `Masonry plate — ${inches(MPLATE_X)} × ${inches(MPLATE_Z)} × ${inches(MPLATE_T)}`,
+    qty: BEAM_XS.length * 2, note: 'cast into the C4 bearing-seat blocks, one per girder line per abutment' },
+  { name: `Bearing pad — ${inches(PAD_X)} × ${inches(PAD_Z)} × ${inches(PAD_T)} elastomeric`,
+    qty: BEAM_XS.length * 2, note: 'pad thickness is a placeholder — size it to the ~7/8″ of thermal movement' },
+  { name: `Sole plate — ${inches(SPLATE_X)} × ${inches(SPLATE_Z)} × ${inches(SPLATE_T)}`,
+    qty: BEAM_XS.length * 2, note: 'welded to the bottom flange · round holes at abutment A (fixed), slotted at B (expansion)' },
+  { name: `Closure slab — ${SLAB_W.toFixed(2)}′ × ${inches(SLAB_H)} × ${inches(SLAB_T)} precast`,
+    qty: 2, note: 'stands in the back 8″ of each seat, tied to the girder ends; the last 8″ of decking bears on it' },
   { name: `Deck timber — 6″ × 8″ rough-sawn, ${PLANK_LEN}′-0″`,
     qty: N_PLANKS, note: `${fmtLb(N_PLANKS * PLANK_BF)} bd ft · ≈ ${fmtLb(N_PLANKS * PLANK_LB)} lb green · ½″ gap between boards` },
 ];
@@ -1622,7 +1702,7 @@ function renderPickList() {
           <thead><tr><th>Item</th><th>Qty</th></tr></thead>
           <tbody>${matRows}</tbody>
         </table>
-        <div class="pl-note">Plate size is a placeholder — swap PLATE_X / PLATE_Z / PLATE_T in the source once the fabricator specs them and every plate, legend line and tooltip follows.</div>
+        <div class="pl-note">Bearing sizes are placeholders — swap MPLATE / PAD / SPLATE in the source once the engineer specs them and every plate, seat depth, legend line and tooltip follows. The seat is cast <strong>SEAT_DROP</strong> below the girder soffit, so a thicker pad deepens the seat automatically rather than pushing the deck above the wing caps.</div>
       </div>
       ${cards}
     </div>`;
