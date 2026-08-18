@@ -428,8 +428,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // rectangle, and the wing keys up through studded blocks rather than a flat cap.
 //
 // Every block in this abutment is square. The course layouts are not hand-picked
-// — they are the fewest blocks that still hold a 2'-0" joint offset on every
-// adjacent pair AND keep all five pads clear of a joint.
+// — they are the fewest blocks that hold a 2'-0" joint offset on every adjacent
+// pair, keep all five pads clear of a joint, AND put nothing smaller than a 4'
+// block at any row end. That last rule is what keeps the 2' blocks out of the
+// quoins and the wing tips, where a short block laps back into neither wall and
+// is restrained on one side only. It costs exactly one block per abutment, and
+// it drops the catalogue to 6' and 4' blocks alone.
 
 const COURSE_H  = 2;        // standard course height (ft)
 const HALF_H    = 1;        // half-block flat-top course (ft)
@@ -535,18 +539,18 @@ const state = {
   sectionVisible: { 'footing': true, 'face': true, 'wing-L': true, 'wing-R': true },
 };
 
-// Square blocks only — no rounded End castings anywhere on this bridge.
+// Square blocks only — no rounded End castings, and with the 4'-minimum-end rule
+// the whole abutment comes out of just two sizes plus their half-height caps.
 const COLORS = {
-  reg6: 0x7ba7d9, reg5: 0x6dd3c4, reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
+  reg6: 0x7ba7d9, reg4: 0xfbbf6c,
   half6: 0xafcbe8, half4: 0xf9d29b, footer: 0xb08968,
 };
 const TYPE_NAMES = {
-  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton", reg3: "3′ Beton", reg2: "2′ Beton",
+  reg6: "6′ Beton", reg4: "4′ Beton",
   half6: "6′ Half (1′)", half4: "4′ Half (1′)",
   footer: "Footer slab 10′×4′×10″",
 };
-const TYPE_WIDTH = { reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2,
-                     half6: 6, half4: 4, footer: FOOTER_X };
+const TYPE_WIDTH = { reg6: 6, reg4: 4, half6: 6, half4: 4, footer: FOOTER_X };
 const TYPE_H     = { half6: HALF_H, half4: HALF_H, footer: FOOTER_T };
 const blockH     = (t) => TYPE_H[t] ?? COURSE_H;
 const courseY0   = (i) => FOOTER_T + i * COURSE_H;
@@ -557,8 +561,8 @@ const keyLabel = (k) => {
   const [t, f] = k.split('|');
   return TYPE_NAMES[t] + (f === 'flat' && !TYPE_H[t] ? ' · flat top' : '');
 };
-const STD_ORDER  = ['reg6|std', 'reg5|std', 'reg4|std', 'reg3|std', 'reg2|std'];
-const CAP_ORDER  = ['reg6|flat', 'reg5|flat', 'reg4|flat', 'reg3|flat'];
+const STD_ORDER  = ['reg6|std', 'reg4|std'];
+const CAP_ORDER  = ['reg6|flat', 'reg4|flat'];
 const TOP_ORDER  = ['half6|flat', 'half4|flat'];
 const SLAB_ORDER = ['footer|slab'];
 const inches     = (ft) => `${+(ft * 12).toFixed(2)}″`;
@@ -608,25 +612,25 @@ function populateLayout() {
   }
 
   // ───── C1 ───── type A: the face runs the full 22' through both corners.
-  faceRow(0, -OVER_HALF, ['reg4', 'reg6', 'reg6', 'reg6']);   // joints -7, -1, 5
-  wingRun(0, WALL_T, ['reg6', 'reg2']);                       // wing joint z = 8
+  faceRow(0, -OVER_HALF, ['reg6', 'reg4', 'reg4', 'reg4', 'reg4']);   // joints -5, -1, 3, 7
+  wingRun(0, WALL_T, ['reg4', 'reg4']);                               // wing joint z = 6
 
   // ───── C2 ───── type B: the wings run through; face is the 18' between them.
-  faceRow(1, -CLEAR_HALF, ['reg4', 'reg6', 'reg6', 'reg2']);  // joints -5, 1, 7
-  wingRun(1, 0, ['reg6', 'reg4']);                            // wing joint z = 6
+  faceRow(1, -CLEAR_HALF, ['reg6', 'reg4', 'reg4', 'reg4']);          // joints -3, 1, 5
+  wingRun(1, 0, ['reg4', 'reg6']);                                    // wing joint z = 4
 
-  // ───── C3 ───── type A again — 2' quoin blocks turn the corner this course.
-  faceRow(2, -OVER_HALF, ['reg2', 'reg6', 'reg6', 'reg6', 'reg2']);   // joints ±9, ±3
-  wingRun(2, WALL_T, ['reg6', 'reg2']);
+  // ───── C3 ───── type A again, quoins the other way round.
+  faceRow(2, -OVER_HALF, ['reg4', 'reg6', 'reg4', 'reg4', 'reg4']);   // joints -7, -1, 3, 7
+  wingRun(2, WALL_T, ['reg4', 'reg4']);
 
   // ───── C4 ───── the cap, type B. All five pads land on flat-top rectangles
-  // with 6"+ to the nearest joint.
-  faceRow(3, -CLEAR_HALF, ['reg4', 'reg6', 'reg5', 'reg3'], { flatTop: true });  // joints -5, 1, 6
-  wingRun(3, 0, ['reg6', 'reg4']);
+  // with 12"+ to the nearest joint.
+  faceRow(3, -CLEAR_HALF, ['reg4', 'reg6', 'reg4', 'reg4'], { flatTop: true });  // joints -5, 1, 5
+  wingRun(3, 0, ['reg4', 'reg6']);
 
   // ───── C5, C6 ───── wings only, above the cap.
-  wingRun(4, 0, ['reg4', 'reg6']);                            // wing joint z = 4
-  wingRun(5, 0, ['half6', 'half4'], { flatTop: true });       // wing joint z = 6
+  wingRun(4, 0, ['reg6', 'reg4']);                            // wing joint z = 6
+  wingRun(5, 0, ['half4', 'half6'], { flatTop: true });       // wing joint z = 4
 
   // ───── OPPOSING ABUTMENT ─────
   if (state.opposing) {
