@@ -332,7 +332,7 @@
 <div id="header">
   <h1>Gardner Brook</h1>
   <div class="dims" id="dimsLabel">22' overall · 8' face · 90° wings 10' back · 5 × W27×84 @ 3'-6" · 16' deck, 8×8 + running planks</div>
-  <div class="stack">55' span · 16 C10×20 + 20 W18×40 diaphragms · 3/4" DL camber</div>
+  <div class="stack">all-square blocks · walls alternate through the 90° quoin · 3/4" DL camber</div>
   <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
 </div>
@@ -417,18 +417,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // are 2' thick and sit x 9..11, so the clear opening between them is 18'-0" and
 // the 16' deck lands centred with 1'-0" to each wing.
 //
-// ── THE ZIPPER ── as on the other bridges, the rounded End block changes wall
-// every course so the face and the wings are laced rather than butted:
-//   C1, C3   4' End bodies lie IN THE FACE (3' each), face reads 20' pivot-to-
-//            pivot; each wing is then a plain 8' run off the round's tangent.
-//   C2, C4   the End turns DOWN THE WING; the face is a plain 18' row.
-// C4 is deliberately a plain row: every bearing pad then lands on a rectangle,
-// and the wing keys up through a studded corner rather than a flat cap.
+// ── THE QUOIN ── a 90° corner needs no rounded pivot block. The two walls
+// simply take turns running through it, which interlocks better than a round
+// because the blocks physically overlap in plan:
+//   type A (C1, C3)  the FACE runs through — face spans the full 22' (x −11..11)
+//                    and the wings pick up behind it at z = 2, running 8'.
+//   type B (C2, C4)  the WINGS run through — wings run z 0..10 and the face is
+//                    the 18' between them (x −9..9).
+// The cap is deliberately type B: every bearing pad then lands on a flat-top
+// rectangle, and the wing keys up through studded blocks rather than a flat cap.
 //
-// The course layouts below are not hand-picked — they are the cheapest of
-// 28k+ legal tilings that still hold a 2'-0" joint offset on every adjacent
-// pair AND keep all five pads clear of a joint. 15 blocks forces a stacked
-// joint and 16–17 only manage 1'; 18 is the first that makes 2'.
+// Every block in this abutment is square. The course layouts are not hand-picked
+// — they are the fewest blocks that still hold a 2'-0" joint offset on every
+// adjacent pair AND keep all five pads clear of a joint.
 
 const COURSE_H  = 2;        // standard course height (ft)
 const HALF_H    = 1;        // half-block flat-top course (ft)
@@ -436,9 +437,10 @@ const N_COURSES = 6;        // C1–C4 face + wings, C5–C6 wings only
 const WALL_T    = 2;        // wall thickness / block depth (ft)
 const EXPLODE_GAP = 3;
 
-const PIVOT_X    = 10;               // corner round centres — 22' overall
-const CLEAR_HALF = PIVOT_X - 1;      // face row runs ±9 between the rounds
-const WING_LEN   = 10;               // wings run z 0..10 (axial -1..9)
+const WING_CX    = 10;               // wing centreline — 22' overall, wings x 9..11
+const CLEAR_HALF = WING_CX - 1;      // face row runs ±9 between the wings
+const OVER_HALF  = WING_CX + 1;      // outside face of the wings, ±11
+const WING_LEN   = 10;               // wings run z 0..10
 
 // ── FOOTER SLABS ── two per abutment, 10' × 4' × 10", laid end to end under
 // the 22' face (1' shy at each end) with the 2' wall centred on them: 1'-0" of
@@ -533,24 +535,20 @@ const state = {
   sectionVisible: { 'footing': true, 'face': true, 'wing-L': true, 'wing-R': true },
 };
 
+// Square blocks only — no rounded End castings anywhere on this bridge.
 const COLORS = {
-  end4: 0x9aa6b4, end6f: 0xc4ccd6,
-  reg6: 0x7ba7d9, reg5: 0x6dd3c4, reg4: 0xfbbf6c, reg3: 0xc4a8f2,
+  reg6: 0x7ba7d9, reg5: 0x6dd3c4, reg4: 0xfbbf6c, reg3: 0xc4a8f2, reg2: 0xf48a8a,
   half6: 0xafcbe8, half4: 0xf9d29b, footer: 0xb08968,
 };
 const TYPE_NAMES = {
-  end4: "4′ End (rounded)", end6f: "6′ End (flat top, no cone)",
-  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton", reg3: "3′ Beton",
-  half6: "6′ Half (1′, square)", half4: "4′ Half (1′, square)",
+  reg6: "6′ Beton", reg5: "5′ Beton", reg4: "4′ Beton", reg3: "3′ Beton", reg2: "2′ Beton",
+  half6: "6′ Half (1′)", half4: "4′ Half (1′)",
   footer: "Footer slab 10′×4′×10″",
 };
-const TYPE_WIDTH = { end4: 4, end6f: 6, reg6: 6, reg5: 5, reg4: 4, reg3: 3,
+const TYPE_WIDTH = { reg6: 6, reg5: 5, reg4: 4, reg3: 3, reg2: 2,
                      half6: 6, half4: 4, footer: FOOTER_X };
 const TYPE_H     = { half6: HALF_H, half4: HALF_H, footer: FOOTER_T };
-const IS_END     = { end4: 1, end6f: 1 };
-const NO_CONE    = { end6f: 1 };
 const blockH     = (t) => TYPE_H[t] ?? COURSE_H;
-const PIVOT_OFF  = (t) => TYPE_WIDTH[t] / 2 - WALL_T / 2;
 const courseY0   = (i) => FOOTER_T + i * COURSE_H;
 
 const finishOf = (b) => b.footing ? 'slab' : (b.flatTop ? 'flat' : 'std');
@@ -559,8 +557,8 @@ const keyLabel = (k) => {
   const [t, f] = k.split('|');
   return TYPE_NAMES[t] + (f === 'flat' && !TYPE_H[t] ? ' · flat top' : '');
 };
-const STD_ORDER  = ['end4|std', 'end6f|std', 'reg6|std', 'reg5|std', 'reg4|std', 'reg3|std'];
-const CAP_ORDER  = ['reg6|flat', 'reg4|flat'];
+const STD_ORDER  = ['reg6|std', 'reg5|std', 'reg4|std', 'reg3|std', 'reg2|std'];
+const CAP_ORDER  = ['reg6|flat', 'reg5|flat', 'reg4|flat', 'reg3|flat'];
 const TOP_ORDER  = ['half6|flat', 'half4|flat'];
 const SLAB_ORDER = ['footer|slab'];
 const inches     = (ft) => `${+(ft * 12).toFixed(2)}″`;
@@ -573,47 +571,30 @@ const BLOCKS = [];
 function block(type, x, z, ry, course, section, extra) {
   BLOCKS.push({ type, x, y: courseY0(course) + blockH(type) / 2, z, ry, course, section, ...extra });
 }
-// A face row laid left to right from `start`, given block widths.
+// A face row laid left to right from `start`. Type A rows start at −11 and run
+// the full 22' through both corners; type B rows start at −9, between the wings.
 function faceRow(course, start, types, extra) {
   let x = start;
   for (const t of types) { block(t, x + TYPE_WIDTH[t] / 2, 1, 0, course, 'face', extra); x += TYPE_WIDTH[t]; }
 }
-// Corner End blocks lying IN the face, rounds out on the pivots, plus the fill
-// between them. 3' + 14' + 3' = 20' pivot to pivot.
-function faceCorners(course, mid, extra) {
-  const off = PIVOT_OFF('end4');
-  block('end4',  PIVOT_X - off, 1, 0,       course, 'face', extra);   // round → +X
-  block('end4', -PIVOT_X + off, 1, Math.PI, course, 'face', extra);   // round → −X
-  faceRow(course, -(PIVOT_X - TYPE_WIDTH['end4'] + 1), mid, extra);
-}
 
-// 90° wings: straight back, u = +Z. n points at the bridge centreline.
-// Both wings run +Z, so both take the SAME rotations — a 90° return is not a
-// mirror the way a splayed wing is. cornerRy = +π/2 turns the End block's local
-// +X (its round) to face −Z, i.e. back onto the pivot; regRy = −π/2 runs the
-// plain blocks down the wing. Only the x of the pivot differs between them.
-const WING_CORNER_RY =  Math.PI / 2;
-const WING_REG_RY    = -Math.PI / 2;
-const L = { P: { x: -PIVOT_X, z: 1 }, u: { x: 0, z: 1 }, n: { x:  1, z: 0 },
-            cornerRy: WING_CORNER_RY, regRy: WING_REG_RY, section: 'wing-L' };
-const R = { P: { x:  PIVOT_X, z: 1 }, u: { x: 0, z: 1 }, n: { x: -1, z: 0 },
-            cornerRy: WING_CORNER_RY, regRy: WING_REG_RY, section: 'wing-R' };
-function wingBlock(W, axial, type, ry, course, extra) {
-  block(type, W.P.x + axial * W.u.x, W.P.z + axial * W.u.z, ry, course, W.section, extra);
-}
-// A wing course. With a `corner` the End block turns the corner, its round on
-// the pivot, and the run picks up where its body ends. With no corner the End is
-// in the face that course, so the wing starts at the round's tangent (axial 1) —
-// EXCEPT the C6 half course, which has no End anywhere and has to close back
-// over the corner from the round's tip (axial -1); pass start = -1 for that.
-function wingCourse(course, corner, types, extra, start) {
+// 90° wings run straight back in +Z on the centrelines x = ±WING_CX. Both take
+// the same rotation — a right-angle return is not a mirror the way a splayed
+// wing is — so ry = −π/2 turns each block's length down the wing and its 2'
+// depth across it, putting the wing at x 9..11.
+const WING_RY = -Math.PI / 2;
+const L = { cx: -WING_CX, section: 'wing-L' };
+const R = { cx:  WING_CX, section: 'wing-R' };
+// A wing run laid from z = `start` outward. Type A courses start at z = 2,
+// behind the face row that ran through the corner; type B start at z = 0 and
+// take the corner themselves.
+function wingRun(course, start, types, extra) {
   for (const W of [L, R]) {
-    let a;
-    if (corner) {
-      wingBlock(W, PIVOT_OFF(corner), corner, W.cornerRy, course, extra);
-      a = -1 + TYPE_WIDTH[corner];
-    } else a = start ?? 1;
-    for (const t of types) { wingBlock(W, a + TYPE_WIDTH[t] / 2, t, W.regRy, course, extra); a += TYPE_WIDTH[t]; }
+    let z = start;
+    for (const t of types) {
+      block(t, W.cx, z + TYPE_WIDTH[t] / 2, WING_RY, course, W.section, extra);
+      z += TYPE_WIDTH[t];
+    }
   }
 }
 
@@ -626,27 +607,26 @@ function populateLayout() {
                   course: 0, section: 'footing', footing: true });
   }
 
-  // ───── C1 ───── corners in the face; wings are a plain 8' run.
-  faceCorners(0, ['reg6', 'reg4', 'reg4']);      // joints ±7, -1, 3
-  wingCourse(0, null, ['reg5', 'reg3']);         // wing joint 6' out
+  // ───── C1 ───── type A: the face runs the full 22' through both corners.
+  faceRow(0, -OVER_HALF, ['reg4', 'reg6', 'reg6', 'reg6']);   // joints -7, -1, 5
+  wingRun(0, WALL_T, ['reg6', 'reg2']);                       // wing joint z = 8
 
-  // ───── C2 ───── corners turn down the wings; face is a plain 18' row.
-  faceRow(1, -CLEAR_HALF, ['reg6', 'reg4', 'reg4', 'reg4']);   // joints -3, 1, 5
-  wingCourse(1, 'end4', ['reg6']);                             // wing joint 3' out
+  // ───── C2 ───── type B: the wings run through; face is the 18' between them.
+  faceRow(1, -CLEAR_HALF, ['reg4', 'reg6', 'reg6', 'reg2']);  // joints -5, 1, 7
+  wingRun(1, 0, ['reg6', 'reg4']);                            // wing joint z = 6
 
-  // ───── C3 ───── corners back in the face.
-  faceCorners(2, ['reg6', 'reg4', 'reg4']);
-  wingCourse(2, null, ['reg5', 'reg3']);
+  // ───── C3 ───── type A again — 2' quoin blocks turn the corner this course.
+  faceRow(2, -OVER_HALF, ['reg2', 'reg6', 'reg6', 'reg6', 'reg2']);   // joints ±9, ±3
+  wingRun(2, WALL_T, ['reg6', 'reg2']);
 
-  // ───── C4 ───── the cap. Plain 18' row so all five pads land on rectangles
-  // with 6"+ to the nearest joint; corners stay down the wings, studded.
-  faceRow(3, -CLEAR_HALF, ['reg4', 'reg6', 'reg4', 'reg4'], { flatTop: true });  // joints -5, 1, 5
-  wingCourse(3, 'end4', ['reg6']);
+  // ───── C4 ───── the cap, type B. All five pads land on flat-top rectangles
+  // with 6"+ to the nearest joint.
+  faceRow(3, -CLEAR_HALF, ['reg4', 'reg6', 'reg5', 'reg3'], { flatTop: true });  // joints -5, 1, 6
+  wingRun(3, 0, ['reg6', 'reg4']);
 
-  // ───── C5, C6 ───── wings only. C5's End is cast FLAT over the round so the
-  // square C6 half can bed on it, and it buries C4's cone at the pivot.
-  wingCourse(4, 'end6f', ['reg4']);                          // wing joint 5' out
-  wingCourse(5, null, ['half4', 'half6'], { flatTop: true }, -1);   // closes over the corner
+  // ───── C5, C6 ───── wings only, above the cap.
+  wingRun(4, 0, ['reg4', 'reg6']);                            // wing joint z = 4
+  wingRun(5, 0, ['half6', 'half4'], { flatTop: true });       // wing joint z = 6
 
   // ───── OPPOSING ABUTMENT ─────
   if (state.opposing) {
@@ -831,61 +811,6 @@ function createStudsGroup(width, depth) {
   return group;
 }
 
-// Studs for an End block: pyramid studs down the straight body, plus the big
-// cone stud at the rounded end — that cone is the corner pivot the wings turn on.
-const ROUND_STUD_TOP_R = 8.5 / 12 / 2;   // 8.5" dia at top
-const ROUND_STUD_BOT_R = 1.0 / 2;        // 1 ft dia at base
-const ROUND_STUD_H     = 0.25;           // ~3"
-const roundStudGeo     = new THREE.CylinderGeometry(ROUND_STUD_TOP_R, ROUND_STUD_BOT_R, ROUND_STUD_H, 16, 1);
-const roundStudEdgeGeo = new THREE.EdgesGeometry(roundStudGeo);
-
-function createEndStudsGroup(width, depth, withCone = true) {
-  const group = new THREE.Group();
-  const startX = -width / 2 + 0.5;
-  const nBody = Math.round(width - 2);   // studded body columns; the rounded end is 2 ft
-  for (let row = 0; row < 2; row++) {
-    const z = (row === 0) ? -depth / 2 + 0.5 : depth / 2 - 0.5;
-    for (let i = 0; i < nBody; i++) group.add(makePyramidStud(startX + i, z));
-  }
-  if (!withCone) return group;          // cast flat over the arc
-  const roundStud = new THREE.Mesh(roundStudGeo, studMat);
-  roundStud.position.set(width / 2 - depth / 2, ROUND_STUD_H / 2, 0);
-  roundStud.castShadow = true;
-  roundStud.receiveShadow = true;
-  roundStud.add(new THREE.LineSegments(roundStudEdgeGeo, studEdgeMat));
-  group.add(roundStud);
-  return group;
-}
-
-// Extruded geometry for the End block — flat back/sides on -X, rounded
-// half-cylinder protrusion on +X. Centered on local origin in all three axes.
-//
-// The profile is drawn in PLAN (length × through-wall depth) and extruded
-// upward, so `planD` sets both the block's depth and the round's diameter,
-// while `h` is the course height. Those two are independent: the 1' flat-top
-// End block is a full 2'-diameter round on a 1'-tall block, and folding them
-// into one argument is what tore its outline apart.
-function createEndGeometry(width, planD, h) {
-  const r = planD / 2;
-  const shape = new THREE.Shape();
-  shape.moveTo(-width / 2, -r);
-  shape.lineTo(width / 2 - r, -r);
-  shape.absarc(width / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2, false);
-  shape.lineTo(-width / 2, r);
-  shape.lineTo(-width / 2, -r);
-
-  const geo = new THREE.ExtrudeGeometry(shape, { steps: 1, depth: h, bevelEnabled: false });
-  geo.rotateX(-Math.PI / 2);
-  geo.computeBoundingBox();
-  const bb = geo.boundingBox;
-  geo.translate(
-    -(bb.min.x + bb.max.x) / 2,
-    -(bb.min.y + bb.max.y) / 2,
-    -(bb.min.z + bb.max.z) / 2
-  );
-  return geo;
-}
-
 // Cast-in-place footer slabs read as plain concrete, no studs, no lettering.
 const footerMat = new THREE.MeshStandardMaterial({ color: 0xa9a7a1, roughness: 0.95, metalness: 0 });
 
@@ -894,16 +819,12 @@ const allBlocks = [];
 function createBlockMesh(spec) {
   const width  = TYPE_WIDTH[spec.type];
   const height = blockH(spec.type);
-  const isEnd  = !!IS_END[spec.type];
   const color  = COLORS[spec.type];
   let geo, materials;
 
   if (spec.footing) {
     geo = new THREE.BoxGeometry(FOOTER_X, FOOTER_T, FOOTER_Z);
     materials = footerMat;
-  } else if (isEnd) {
-    geo = createEndGeometry(width, WALL_T, height);
-    materials = new THREE.MeshPhongMaterial({ color, shininess: 8 });
   } else {
     geo = new THREE.BoxGeometry(width, height, WALL_T);
     materials = [];
@@ -932,8 +853,7 @@ function createBlockMesh(spec) {
 
   // Cast-flat tops carry no studs, and neither does a footer slab.
   if (!spec.flatTop && !spec.footing) {
-    const studs = isEnd ? createEndStudsGroup(width, WALL_T, !NO_CONE[spec.type])
-                        : createStudsGroup(width, WALL_T);
+    const studs = createStudsGroup(width, WALL_T);
     studs.position.y = height / 2;
     mesh.add(studs);
   }
@@ -1543,11 +1463,13 @@ renderer.domElement.addEventListener('pointermove', e => {
       } else {
         const sectionLabel = s.section === 'face' ? 'Face Wall'
           : s.section === 'wing-L' ? 'Left Wing' : 'Right Wing';
-        const corner = IS_END[s.type]
-          ? (s.section === 'face' ? ' · corner, tied into the face' : ' · corner, tied into the wing') : '';
+        const quoin = (s.section === 'face' && Math.abs(Math.abs(s.x) + TYPE_WIDTH[s.type] / 2 - OVER_HALF) < 1e-6)
+          ? ' · quoin, face runs through the corner'
+          : (s.section !== 'face' && Math.abs(s.z - TYPE_WIDTH[s.type] / 2) < 1e-6)
+            ? ' · quoin, wing runs through the corner' : '';
         const finishLabel = s.flatTop ? ' · flat top' : '';
         const wallLabel = s.wall === 'B' ? ' · Abutment B' : '';
-        tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${sectionLabel} · C${s.course + 1}${corner}${finishLabel}${wallLabel}`;
+        tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${sectionLabel} · C${s.course + 1}${quoin}${finishLabel}${wallLabel}`;
       }
       tooltip.style.left = e.clientX + 'px';
       tooltip.style.top = e.clientY + 'px';
