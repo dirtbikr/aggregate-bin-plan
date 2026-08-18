@@ -420,12 +420,23 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // ── THE QUOIN ── a 90° corner needs no rounded pivot block. The two walls
 // simply take turns running through it, which interlocks better than a round
 // because the blocks physically overlap in plan:
-//   type A (C1, C3)  the FACE runs through — face spans the full 22' (x −11..11)
+//   type A (C2, C4)  the FACE runs through — face spans the full 22' (x −11..11)
 //                    and the wings pick up behind it at z = 2, running 8'.
-//   type B (C2, C4)  the WINGS run through — wings run z 0..10 and the face is
+//   type B (C1, C3)  the WINGS run through — wings run z 0..10 and the face is
 //                    the 18' between them (x −9..9).
-// The cap is deliberately type B: every bearing pad then lands on a flat-top
-// rectangle, and the wing keys up through studded blocks rather than a flat cap.
+//
+// The cap is type A, and that is what buys the 6' blocks. An 18' cap row starting
+// at x = −9 cannot begin with a 6' block: its joint would land at x = −3, right
+// on the edge of the 3'-6" bearing pad (which occupies x −4..−3). A 5' lands on
+// the other edge at −4. Only a 4' clears — and once the cap starts with a 4' the
+// 2' bond drags every course below it down to a single 6'. Starting the cap at
+// x = −11 instead puts a 6' block's joint at −5, clear of every pad, and the
+// whole cascade opens up: 20 six-footers instead of 12, 38 blocks instead of 42.
+//
+// The price is that the cap's corner block is flat-top, so the first 2' of the
+// C5 wing block bears on flat concrete rather than studs. The other 4' of it
+// still keys into studded wing blocks, and that patch sits at the top of the
+// wall where lateral fill pressure is lowest.
 //
 // Every block in this abutment is square. The course layouts are not hand-picked
 // — they are the fewest blocks that hold a 2'-0" joint offset on every adjacent
@@ -611,26 +622,26 @@ function populateLayout() {
                   course: 0, section: 'footing', footing: true });
   }
 
-  // ───── C1 ───── type A: the face runs the full 22' through both corners.
-  faceRow(0, -OVER_HALF, ['reg6', 'reg4', 'reg4', 'reg4', 'reg4']);   // joints -5, -1, 3, 7
-  wingRun(0, WALL_T, ['reg4', 'reg4']);                               // wing joint z = 6
+  // ───── C1 ───── type B: the wings run through; face is the 18' between them.
+  faceRow(0, -CLEAR_HALF, ['reg6', 'reg6', 'reg6']);          // joints ±3
+  wingRun(0, 0, ['reg4', 'reg6']);                            // wing joint z = 4
 
-  // ───── C2 ───── type B: the wings run through; face is the 18' between them.
-  faceRow(1, -CLEAR_HALF, ['reg6', 'reg4', 'reg4', 'reg4']);          // joints -3, 1, 5
-  wingRun(1, 0, ['reg4', 'reg6']);                                    // wing joint z = 4
+  // ───── C2 ───── type A: the face runs the full 22' through both corners.
+  faceRow(1, -OVER_HALF, ['reg6', 'reg6', 'reg6', 'reg4']);   // joints -5, 1, 7
+  wingRun(1, WALL_T, ['reg4', 'reg4']);                       // wing joint z = 6
 
-  // ───── C3 ───── type A again, quoins the other way round.
-  faceRow(2, -OVER_HALF, ['reg4', 'reg6', 'reg4', 'reg4', 'reg4']);   // joints -7, -1, 3, 7
-  wingRun(2, WALL_T, ['reg4', 'reg4']);
+  // ───── C3 ───── type B again.
+  faceRow(2, -CLEAR_HALF, ['reg6', 'reg6', 'reg6']);          // joints ±3
+  wingRun(2, 0, ['reg4', 'reg6']);
 
-  // ───── C4 ───── the cap, type B. All five pads land on flat-top rectangles
-  // with 12"+ to the nearest joint.
-  faceRow(3, -CLEAR_HALF, ['reg4', 'reg6', 'reg4', 'reg4'], { flatTop: true });  // joints -5, 1, 5
-  wingRun(3, 0, ['reg4', 'reg6']);
+  // ───── C4 ───── the cap, type A — the 22' row is what lets it start on a 6'.
+  // All five pads land on flat-top rectangles with 6"+ to the nearest joint.
+  faceRow(3, -OVER_HALF, ['reg6', 'reg6', 'reg4', 'reg6'], { flatTop: true });  // joints -5, 1, 5
+  wingRun(3, WALL_T, ['reg4', 'reg4']);
 
   // ───── C5, C6 ───── wings only, above the cap.
-  wingRun(4, 0, ['reg6', 'reg4']);                            // wing joint z = 6
-  wingRun(5, 0, ['half4', 'half6'], { flatTop: true });       // wing joint z = 4
+  wingRun(4, 0, ['reg4', 'reg6']);                            // wing joint z = 4
+  wingRun(5, 0, ['half6', 'half4'], { flatTop: true });       // wing joint z = 6
 
   // ───── OPPOSING ABUTMENT ─────
   if (state.opposing) {
