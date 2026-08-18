@@ -407,7 +407,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // elastomeric pads, timber deck with running planks.
 //
 // Coordinate system:
-//   Origin = top of the footer slab, centred on the wall's front face.
+//   Origin = grade (underside of the footer slab), centred on the wall's front face.
+//   courseY0 therefore starts the block wall at y = FOOTER_T, bearing directly on it.
 //   +X right along the face · +Y up · +Z back (toward the approach)
 // The wall is one 2' row at z 0..2, centred on a 4'-wide footer at z -1..3.
 //
@@ -621,7 +622,7 @@ function populateLayout() {
 
   // ───── FOOTER SLABS ───── two 10'×4'×10" per abutment, 1' shy at each end.
   for (const cx of [-FOOTER_X / 2, FOOTER_X / 2]) {
-    BLOCKS.push({ type: 'footer', x: cx, y: -FOOTER_T / 2, z: WALL_T / 2, ry: 0,
+    BLOCKS.push({ type: 'footer', x: cx, y: FOOTER_T / 2, z: WALL_T / 2, ry: 0,
                   course: 0, section: 'footing', footing: true });
   }
 
