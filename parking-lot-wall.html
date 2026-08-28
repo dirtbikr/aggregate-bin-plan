@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Parking Lot Wall — 60′ × 150′ / 126′ enclosure · 26′ return · 10′-0″, 5 courses</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #1a202c;
+    touch-action: none;
+    color-scheme: light;
+  }
+  canvas { display: block; }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 10px 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  #header h1 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: #1a202c; }
+  #header .dims { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  #header .stack { margin-left: auto; font-size: 11px; color: #718096; font-family: 'SF Mono', Menlo, monospace; }
+
+  /* Mobile-only panel toggle (hidden on desktop). */
+  #uiToggle {
+    display: none;
+    margin-left: auto;
+    align-items: center;
+    justify-content: center;
+    width: 42px; height: 34px;
+    border-radius: 9px;
+    background: rgba(15,23,42,0.05);
+    border: 1px solid rgba(15,23,42,0.12);
+    color: #2d3748;
+    font-size: 17px; line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #uiToggle:active { transform: scale(0.96); }
+
+  /* Pick-list button (header) + full-screen overlay. */
+  #pickListBtn {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    margin-left: 6px;
+    background: #2563eb; color: #fff; border: none;
+    padding: 8px 14px; border-radius: 9px;
+    font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  }
+  #pickListBtn:hover { background: #1d4ed8; }
+  #pickListBtn:active { transform: scale(0.97); }
+
+  #pickList {
+    position: fixed; inset: 0; z-index: 500;
+    background: #eef2f7; color: #1a202c;
+    display: none; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  #pickList.open { display: block; }
+  .pl-top {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .pl-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .pl-close {
+    margin-left: auto; width: 42px; height: 42px; border-radius: 11px;
+    background: rgba(15,23,42,0.06); border: 1px solid rgba(15,23,42,0.12);
+    font-size: 18px; color: #2d3748; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .pl-close:active { transform: scale(0.96); }
+  .pl-print {
+    margin-left: auto; height: 42px; padding: 0 14px; border-radius: 11px;
+    background: rgba(15,23,42,0.06); border: 1px solid rgba(15,23,42,0.12);
+    font-size: 14px; font-weight: 600; color: #2d3748; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pl-print:active { transform: scale(0.96); }
+  .pl-print + .pl-close { margin-left: 8px; }
+  .pl-sub { display: none; }
+  .pl-wrap { max-width: 720px; margin: 0 auto; padding: 16px 14px 48px; }
+  .pl-summary {
+    background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px;
+    padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .pl-summary-line { font-size: 14px; color: #2d3748; }
+  .pl-dim { color: #94a3b8; }
+  .pl-progress { height: 12px; border-radius: 7px; background: rgba(15,23,42,0.1); overflow: hidden; margin: 12px 0 6px; }
+  .pl-progress-fill { height: 100%; background: #22c55e; transition: width 0.25s ease; }
+  .pl-progress-text { font-size: 13px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  .pl-note { font-size: 12px; color: #718096; margin: 12px 0 4px; line-height: 1.5; }
+  .pl-recon-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pl-table th, .pl-table td {
+    padding: 6px 8px; text-align: right;
+    border-bottom: 1px solid rgba(15,23,42,0.08);
+    font-variant-numeric: tabular-nums;
+  }
+  .pl-table th:first-child, .pl-table td:first-child { text-align: left; }
+  .pl-table th {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #718096;
+  }
+  .pl-table tr:last-child td { border-bottom: none; }
+  .pl-left { font-weight: 700; color: #1d4ed8; }
+  .pl-extra { color: #b45309; font-weight: 600; }
+  .pl-done { color: #16a34a; font-weight: 600; }
+  .pl-reset {
+    margin-top: 10px; background: rgba(239,68,68,0.08); color: #b91c1c;
+    border: 1px solid rgba(239,68,68,0.25); border-radius: 9px;
+    padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pl-reset:active { transform: scale(0.97); }
+  .pl-load {
+    background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px;
+    margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .pl-load-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px 10px; }
+  .pl-load-name { font-size: 16px; font-weight: 700; }
+  .pl-load-meta { margin-left: auto; font-size: 13px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  .pl-load-bar { height: 6px; margin: 0 16px; background: rgba(15,23,42,0.08); border-radius: 4px; overflow: hidden; }
+  .pl-load-fill { height: 100%; background: #2563eb; }
+  .pl-rows { padding: 8px; }
+  .pl-row {
+    display: flex; align-items: center; gap: 14px;
+    min-height: 56px; padding: 10px 12px; border-radius: 10px;
+    cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .pl-row:hover { background: rgba(37,99,235,0.05); }
+  .pl-row:active { background: rgba(37,99,235,0.1); }
+  .pl-check {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    border: 2px solid rgba(15,23,42,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff;
+  }
+  .pl-row.done .pl-check { background: #22c55e; border-color: #22c55e; }
+  .pl-row-main { flex: 1; min-width: 0; }
+  .pl-row-label { font-size: 15px; font-weight: 600; color: #1a202c; }
+  .pl-row.done .pl-row-label { text-decoration: line-through; color: #9aa6b4; }
+  .pl-row-sub { font-size: 13px; color: #718096; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+  .panel {
+    position: fixed;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 3px rgba(15,23,42,0.05);
+  }
+
+  #legend { top: 60px; right: 12px; min-width: 236px; max-width: 300px; max-height: calc(100vh - 76px); overflow-y: auto; }
+  #controls { bottom: 12px; left: 12px; max-width: 340px; }
+  #cameraBtns { bottom: 12px; right: 12px; }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #718096;
+    margin-bottom: 10px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .legend-color {
+    width: 28px; height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.12);
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18);
+  }
+  .legend-label { flex: 1; color: #2d3748; }
+  .legend-count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-total {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .legend-total .label { color: #4a5568; }
+  .legend-total .count { font-weight: 700; font-variant-numeric: tabular-nums; color: #1a202c; }
+
+  .legend-group-title {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    margin: 10px 0 4px;
+  }
+  .legend-group-title:first-child { margin-top: 0; }
+  .legend-subtotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding-top: 4px;
+    color: #4a5568;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend-subtotal .count { font-weight: 600; color: #2d3748; }
+
+  .toggle-row, .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn-row { margin-top: 6px; }
+
+  .btn {
+    background: rgba(15,23,42,0.04);
+    border: 1px solid rgba(15,23,42,0.1);
+    color: #2d3748;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    font-family: inherit;
+    min-height: 36px;
+    user-select: none;
+    -webkit-user-select: none;
+    flex: 1;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(15,23,42,0.08); border-color: rgba(15,23,42,0.15); }
+  .btn:active { transform: scale(0.97); }
+  .btn.active {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: white;
+  }
+  .btn.active:hover { background: #1d4ed8; }
+
+  #tooltip {
+    position: fixed;
+    background: rgba(15,23,42,0.95);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 200;
+    transform: translate(12px, -32px);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  @media (max-width: 768px) {
+    #header h1 { font-size: 13px; flex-shrink: 0; }
+    #header .dims { font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #header .stack { display: none; }
+    #uiToggle { display: inline-flex; }
+    #pickListBtn { margin-left: auto; padding: 8px 11px; }
+    #pickListBtn .pl-btn-text { display: none; }
+    /* Collapsed by default on mobile — tap the header button to reveal the panels. */
+    body.ui-collapsed #legend,
+    body.ui-collapsed #controls,
+    body.ui-collapsed #cameraBtns { display: none; }
+    #legend { top: 56px; right: 8px; min-width: 0; max-width: 52%; padding: 10px; }
+    #legend .legend-row { font-size: 11px; padding: 3px 0; gap: 8px; }
+    #legend .legend-color { width: 22px; height: 12px; }
+    #legend .legend-label { font-size: 11px; }
+    #controls { bottom: 8px; left: 8px; right: 8px; max-width: none; padding: 10px; }
+    #cameraBtns {
+      top: 56px;
+      bottom: auto;
+      right: auto;
+      left: 8px;
+      padding: 8px;
+    }
+    .btn { font-size: 11px; padding: 7px 8px; min-height: 34px; }
+  }
+
+  /* ── Print: the open pick list becomes a plain flowing document that
+     paginates naturally; the 3D scene and panels are hidden. ── */
+  @media print {
+    @page { margin: 0.5in; }
+    html, body { overflow: visible !important; height: auto !important; }
+    body.pl-open canvas, body.pl-open #header, body.pl-open #legend,
+    body.pl-open #controls, body.pl-open #cameraBtns, body.pl-open #tooltip { display: none !important; }
+    #pickList { position: static; overflow: visible; background: #fff; }
+    .pl-top {
+      position: static; padding: 0 0 12px; border-bottom: none;
+      background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+    .pl-sub { display: inline; font-size: 13px; font-weight: 400; color: #4a5568; }
+    .pl-close, .pl-print, .pl-reset { display: none !important; }
+    .pl-wrap { max-width: none; padding: 0; }
+    .pl-summary, .pl-load { box-shadow: none; border: 1px solid #94a3b8; }
+    .pl-summary { break-inside: avoid; page-break-inside: avoid; }
+    .pl-table th, .pl-table td { padding: 4px 8px; border-bottom: 1px solid #cbd5e1; }
+    .pl-load { break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
+    .pl-row { min-height: 0; padding: 3px 8px; break-inside: avoid; page-break-inside: avoid; }
+    .pl-row-label { font-size: 13px; }
+    .pl-row-sub { font-size: 11px; margin-top: 0; }
+    /* Check boxes must survive printers that drop backgrounds: outlined box,
+       green check glyph instead of white-on-green. */
+    .pl-check { width: 18px; height: 18px; border-radius: 4px; font-size: 13px; border-color: #475569; color: #16a34a; }
+    .pl-row.done .pl-check { background: #fff; border-color: #16a34a; }
+    .pl-progress, .pl-load-bar { border: 1px solid #cbd5e1; }
+    .pl-progress-fill, .pl-load-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body class="ui-collapsed">
+
+<div id="header">
+  <h1>Parking Lot Wall</h1>
+  <div class="dims" id="dimsLabel">60′ back · 126′ west · 150′ east · 26′ return · 10′-0″ throughout, 5 courses @ 2′</div>
+  <div class="stack">all-square blocks · 90° quoins alternate through every corner · square ends · C5 cast flat</div>
+  <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
+  <button id="uiToggle" aria-label="Show or hide panels">☰</button>
+</div>
+
+<div id="legend" class="panel">
+  <div class="panel-title">Block Counts</div>
+  <div id="legendBody"></div>
+</div>
+
+<div id="controls" class="panel">
+  <div class="panel-title">View — Courses</div>
+  <div class="toggle-row">
+    <button class="btn active" data-course="0">C1</button>
+    <button class="btn active" data-course="1">C2</button>
+    <button class="btn active" data-course="2">C3</button>
+    <button class="btn active" data-course="3">C4</button>
+    <button class="btn active" data-course="4">C5</button>
+  </div>
+  <div class="toggle-row btn-row">
+    <button class="btn active" data-section="pad">Pad</button>
+    <button class="btn active" data-section="north">Back</button>
+    <button class="btn active" data-section="west">West</button>
+    <button class="btn active" data-section="east">East</button>
+    <button class="btn active" data-section="leg">Return</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="explodeToggle">Explode</button>
+    <button class="btn" id="resetToggle">Reset</button>
+  </div>
+</div>
+
+<div id="cameraBtns" class="panel">
+  <div class="panel-title">Camera</div>
+  <div class="btn-row">
+    <button class="btn active" data-view="iso">Iso</button>
+    <button class="btn" data-view="plan">Plan</button>
+    <button class="btn" data-view="entry">Entrance</button>
+    <button class="btn" data-view="back">Back</button>
+    <button class="btn" data-view="corner">Corner</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="pickList"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ============================================================
+// CONFIG — PARKING LOT WALL
+// ============================================================
+// A three-sided block wall holding a level parking pad: a 60' back wall with a
+// 126' wall down the west side, a 150' wall down the east side, and a 26' return
+// kicking west off the foot of the west wall. Open to the south, where the pad
+// daylights onto the existing driveway. 10'-0" of wall at the tallest point —
+// five 2' courses, square-ended — with the top course cast flat.
+//
+// This is a freestanding site wall. It is not a bridge and carries nothing but
+// the pad behind it.
+//
+// Coordinate system:
+//   Origin = top of the levelling pad at the outside face of the NW corner.
+//   +X east · +Y up · +Z south (so the plan view reads like the sketch,
+//   north at the top). Block courses run y 0..10; the parking surface is y 9.5,
+//   six inches below the cap so the flat top course stands proud as a curb.
+//   The ground plane is drawn at the UNDERSIDE of the levelling pad, so the pad
+//   is visible. Built, the top of the pad goes 12" below finished grade: that
+//   buries the bottom foot of C1 and leaves 9'-0" of face showing out of the
+//   10'-0" of wall the sketch caps at.
+//
+// ── PLAN ── every wall is one 2'-thick row. Outside faces:
+//   back wall   z 0..2,     x   0..60    (60'-0" overall, the sketch's 60')
+//   west wall   x 0..2,     z   0..126   (the sketch's 125', on the 2' module)
+//   east wall   x 58..60,   z   0..150
+//   return      z 124..126, x −26..0     (the sketch's 25', on the 2' module)
+// The sketch's 125' and 25' are odd feet. A wall built out of 6' / 4' / 2'
+// castings only closes on even stations, and an odd run forces a 5' or 3' block
+// whose joints land 1' off the course below instead of 2'. Rounding those two
+// dimensions up one foot each is what buys a clean 2' bond everywhere — see the
+// solver note below. Clear inside the enclosure is 56'-0" × 124'-0".
+//
+// ── THE QUOINS ── the sketch draws the three corners rounded, the way a pen
+// draws a corner. Built, they are square quoins: the two walls take turns
+// running through, which interlocks in plan rather than just stacking, and
+// needs no rounded End casting anywhere on the job.
+//   type A (C1, C3, C5)  the EAST–WEST walls run through — the back wall spans
+//                        the full 60' and the return spans x −26..2; the west
+//                        and east walls pick up behind them.
+//   type B (C2, C4)      the NORTH–SOUTH walls run through — west runs z 0..126
+//                        and east runs z 0..150; the back wall is the 56'
+//                        between them and the return is the 26' outside.
+// C5 is type A, so the flat cap runs unbroken around the two back corners.
+//
+// ── HEIGHTS ── 10'-0" throughout. Every run is five full courses end to end
+// and both free ends — the east wall at z 150 and the return at x −26 — are
+// square, not stepped. The cap is therefore exactly C5, all the way round.
+//
+// ── WHAT IS NOT DRAWN ── block work and the levelling pad, nothing else. A 10'
+// gravity wall two feet deep does not stand on its own weight, so reinforcement
+// is real scope, as are the drainage chimney behind the wall, the pad backfill
+// and a barrier at a 10' drop on a parking lot edge. None of it is modelled or
+// counted here.
+
+const COURSE_H  = 2;         // course height (ft)
+const N_COURSES = 5;         // C1–C5 · 10'-0" of wall
+const WALL_T    = 2;         // wall thickness / block depth (ft)
+const WALL_H    = N_COURSES * COURSE_H;
+const EXPLODE_GAP = 4;
+
+// ── LEVELLING PAD ── 4'-0" × 12" of compacted 3/4" crushed stone, 1' of it each
+// side of the 2' wall.
+const PAD_T = 1, PAD_W = 4;
+
+// ── PLAN STATIONS ──
+const W_OUT    = 60;         // back wall, outside face to outside face
+const WEST_LEN = 126;        // west wall, back face to south end
+const EAST_LEN = 150;        // east wall, back face to south end
+const LEG_LEN  = 26;         // return, west of the west wall's outside face
+
+const CX_WEST = WALL_T / 2;              // west wall centreline, x = 1
+const CX_EAST = W_OUT - WALL_T / 2;      // east wall centreline, x = 59
+const CZ_BACK = WALL_T / 2;              // back wall centreline, z = 1
+const CZ_LEG  = WEST_LEN - WALL_T / 2;   // return centreline, z = 125
+
+// Each run is [start, length] per course, in that run's own axis. Type A courses
+// (0, 2, 4) push the east–west walls through the corners; type B (1, 3) push the
+// north–south walls through. The short upper courses are the step-downs.
+const RUNS = {
+  north: { axis: 'x', c: CZ_BACK, label: 'Back wall',
+    courses: [[0, W_OUT], [WALL_T, W_OUT - 2 * WALL_T], [0, W_OUT], [WALL_T, W_OUT - 2 * WALL_T], [0, W_OUT]] },
+  west:  { axis: 'z', c: CX_WEST, label: 'West wall',
+    courses: [[WALL_T, WEST_LEN - 2 * WALL_T], [0, WEST_LEN], [WALL_T, WEST_LEN - 2 * WALL_T], [0, WEST_LEN], [WALL_T, WEST_LEN - 2 * WALL_T]] },
+  east:  { axis: 'z', c: CX_EAST, label: 'East wall',
+    courses: [[WALL_T, EAST_LEN - WALL_T], [0, EAST_LEN], [WALL_T, EAST_LEN - WALL_T], [0, EAST_LEN], [WALL_T, EAST_LEN - WALL_T]] },
+  leg:   { axis: 'x', c: CZ_LEG, label: 'Return',
+    courses: [[-LEG_LEN, LEG_LEN + WALL_T], [-LEG_LEN, LEG_LEN], [-LEG_LEN, LEG_LEN + WALL_T], [-LEG_LEN, LEG_LEN], [-LEG_LEN, LEG_LEN + WALL_T]] },
+};
+
+const state = {
+  exploded: false,
+  courseVisible: [true, true, true, true, true],
+  sectionVisible: { pad: true, north: true, west: true, east: true, leg: true },
+};
+
+// Three castings for the whole job — 6', 4' and 2' — in studded and cast-flat
+// versions. The 2' is never allowed at a run end; it only ever turns up mid-run
+// as the make-up block that keeps the bond off the course below.
+const COLORS = { reg6: 0x7ba7d9, reg4: 0xfbbf6c, reg2: 0xf48a8a, pad: 0xa8a29a };
+const TYPE_NAMES = {
+  reg6: "6′ Beton", reg4: "4′ Beton", reg2: "2′ Beton",
+  pad: "Levelling pad — 3/4″ crushed stone",
+};
+const TYPE_WIDTH = { reg6: 6, reg4: 4, reg2: 2 };
+const SIZE_TYPE  = { 6: 'reg6', 4: 'reg4', 2: 'reg2' };
+const courseY0   = (i) => i * COURSE_H;
+
+const finishOf = (b) => b.pad ? 'pad' : (b.flatTop ? 'flat' : 'std');
+const invKey   = (b) => b.type + '|' + finishOf(b);
+const keyLabel = (k) => {
+  const [t, f] = k.split('|');
+  return TYPE_NAMES[t] + (f === 'flat' ? ' · flat top' : '');
+};
+const STD_ORDER = ['reg6|std', 'reg4|std', 'reg2|std'];
+const CAP_ORDER = ['reg6|flat', 'reg4|flat', 'reg2|flat'];
+const inches = (ft) => `${+(ft * 12).toFixed(2)}″`;
+const ftin   = (ft) => { const t = Math.round(ft * 12); return `${Math.floor(t / 12)}′-${t % 12}″`; };
+const cy     = (cf) => cf / 27;
+
+// ============================================================
+// BOND SOLVER
+// ============================================================
+// 1,754 linear feet of wall over five courses is too much to hand-pick a row at
+// a time, so the layout is solved rather than listed. For each run the solver
+// looks for the fewest blocks that satisfy, in order:
+//   · the run closes exactly on its start and end station,
+//   · no block shorter than 4' at either end of a run — a 2' at a quoin or a
+//     wall end laps into neither wall and is restrained on one side only,
+//   · every joint at least 2'-0" clear of every joint in the course below.
+// That last rule is the whole reason the plan runs on even stations. Blocks are
+// 6', 4' and 2', so every joint lands on an even foot; two joints are then either
+// on top of each other or a clean 2' apart, and there is no way to end up with
+// the 1' near-miss that an odd run length forces.
+//
+// Four search orders are tried per wall and the cheapest kept. It matters: the
+// obvious greedy answer parks the make-up block at the end of the run, which
+// shunts every joint above it onto the course below's stations and costs an
+// extra block in the next course up to get back off them.
+const MIN_OFFSET = 2;
+const clearOf = (j, prev) => prev.every(p => Math.abs(j - p) >= MIN_OFFSET - 1e-9);
+const jointsOf = (start, widths) => {
+  const j = []; let p = start;
+  for (let i = 0; i < widths.length - 1; i++) { p += widths[i]; j.push(+p.toFixed(3)); }
+  return j;
+};
+
+function solveRun(start, length, prev, sizes, tiers) {
+  const end = start + length;
+  for (const minEnd of tiers) {
+    const dead = new Set(), out = [];
+    const walk = (pos, first) => {
+      const rem = +(end - pos).toFixed(6);
+      if (Math.abs(rem) < 1e-9) return true;
+      const key = pos.toFixed(3);
+      if (dead.has(key)) return false;
+      for (const w of sizes) {
+        if (w > rem + 1e-9) continue;
+        const next = +(pos + w).toFixed(3);
+        const last = Math.abs(rem - w) < 1e-9;
+        if ((first || last) && w < minEnd) continue;
+        if (!last && !clearOf(next, prev)) continue;
+        out.push(w);
+        if (walk(pos + w, false)) return true;
+        out.pop();
+      }
+      dead.add(key);
+      return false;
+    };
+    if (walk(start, true)) return { widths: out.slice(), minEnd };
+  }
+  return null;
+}
+
+// Slide the sub-4' make-up blocks toward mid-run, but only while every joint
+// stays 2' clear of BOTH neighbouring courses. A 2' block reads better in the
+// middle of a run than one block in from the end, and it is no harder to lay.
+function recentre(start, widths, minEnd, neighbours) {
+  const holds = (w) => w[0] >= minEnd && w[w.length - 1] >= minEnd &&
+    jointsOf(start, w).every(j => neighbours.every(n => clearOf(j, n)));
+  let w = widths, moved = true, guard = 0;
+  while (moved && guard++ < 400) {
+    moved = false;
+    const mid = (w.length - 1) / 2;
+    for (let i = 0; i < w.length; i++) {
+      if (w[i] >= 4) continue;
+      const k = i + (i < mid ? 1 : -1);
+      if (k < 0 || k >= w.length || w[k] === w[i]) continue;
+      if (Math.abs(k - mid) >= Math.abs(i - mid)) continue;
+      const t = w.slice(); [t[i], t[k]] = [t[k], t[i]];
+      if (holds(t)) { w = t; moved = true; }
+    }
+  }
+  return w;
+}
+
+const STRATEGIES = [
+  { sizes: [6, 4, 2], tiers: [4] },
+  { sizes: [6, 4, 2], tiers: [6, 4] },
+  { sizes: [6, 2, 4], tiers: [4] },
+  { sizes: [6, 2, 4], tiers: [6, 4] },
+];
+function solveWall(courses) {
+  let best = null;
+  for (const st of STRATEGIES) {
+    const laid = []; let prev = [], ok = true;
+    for (const [s, L] of courses) {
+      const r = solveRun(s, L, prev, st.sizes, st.tiers);
+      if (!r) { ok = false; break; }
+      laid.push({ start: s, length: L, ...r });
+      prev = jointsOf(s, r.widths);
+    }
+    if (!ok) continue;
+    for (let i = 0; i < laid.length; i++) {
+      const nb = [];
+      if (i > 0) nb.push(jointsOf(laid[i - 1].start, laid[i - 1].widths));
+      if (i < laid.length - 1) nb.push(jointsOf(laid[i + 1].start, laid[i + 1].widths));
+      laid[i].widths = recentre(laid[i].start, laid[i].widths, laid[i].minEnd, nb);
+    }
+    const n = laid.reduce((a, r) => a + r.widths.length, 0);
+    const odd = laid.reduce((a, r) => a + r.widths.filter(w => w !== 6).length, 0);
+    if (!best || n < best.n || (n === best.n && odd < best.odd)) best = { laid, n, odd };
+  }
+  if (!best) throw new Error('no bond solution');
+  return best.laid;
+}
+const LAYOUT = Object.fromEntries(
+  Object.entries(RUNS).map(([k, r]) => [k, solveWall(r.courses)])
+);
+
+// ── LEVELLING PAD ── drawn as four continuous slabs rather than 300 little
+// ones; it is placed stone, not a block product. Segments butt at the corners
+// instead of overlapping so nothing z-fights.
+const PAD_SLABS = [
+  { x0: -1,  x1: 61, z0: -1,  z1: 3,   run: 'back wall' },
+  { x0: -1,  x1: 3,  z0: 3,   z1: 123, run: 'west wall' },
+  { x0: 57,  x1: 61, z0: 3,   z1: 151, run: 'east wall' },
+  { x0: -27, x1: 3,  z0: 123, z1: 127, run: 'return' },
+];
+const PAD_AREA = PAD_SLABS.reduce((a, s) => a + (s.x1 - s.x0) * (s.z1 - s.z0), 0);
+
+// ============================================================
+// WALL LAYOUT
+// ============================================================
+const BLOCKS = [];
+function populateLayout() {
+  BLOCKS.length = 0;
+
+  for (const s of PAD_SLABS) {
+    BLOCKS.push({
+      pad: true, type: 'pad', section: 'pad', course: 0, ry: 0,
+      x: (s.x0 + s.x1) / 2, y: -PAD_T / 2, z: (s.z0 + s.z1) / 2,
+      sx: s.x1 - s.x0, sz: s.z1 - s.z0, run: s.run,
+    });
+  }
+
+  for (const [key, run] of Object.entries(RUNS)) {
+    LAYOUT[key].forEach((row, ci) => {
+      let p = row.start;
+      for (const w of row.widths) {
+        const along = p + w / 2;
+        BLOCKS.push({
+          type: SIZE_TYPE[w], course: ci, section: key,
+          flatTop: ci === N_COURSES - 1,
+          y: courseY0(ci) + COURSE_H / 2,
+          x: run.axis === 'x' ? along : run.c,
+          z: run.axis === 'x' ? run.c : along,
+          ry: run.axis === 'x' ? 0 : -Math.PI / 2,
+          station: p + w,        // far joint, for build order and the tooltip
+        });
+        p += w;
+      }
+    });
+  }
+}
+
+// ============================================================
+// BLOCK GEOMETRY
+// ============================================================
+// Debossed AROOSTA CAST normal map for the long faces of the blocks.
+function createTextTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#8080ff';
+  ctx.fillRect(0, 0, 1024, 256);
+  ctx.font = 'bold 120px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#6a6adf';
+  ctx.fillText('AROOSTA CAST', 512, 132);
+  ctx.fillStyle = '#9a9aff';
+  ctx.fillText('AROOSTA CAST', 512, 124);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.NoColorSpace;
+  return tex;
+}
+const textTexture = createTextTexture();
+
+// 4-sided pyramid frustum stud, one per foot of width, two rows 6" from edge.
+const STUD_TOP_R = 2.5 / 12 / 2;
+const STUD_BOT_R = 5.5 / 12 / 2;
+const STUD_H     = 0.15;
+const studMat = new THREE.MeshPhongMaterial({ color: 0x7a8696, flatShading: true });
+
+// A wall this size is ~300 blocks and ~3,000 studs. Every stud on a block is
+// merged into one geometry, cached per block width, so a block is three objects
+// (body, studs, edges) instead of thirty.
+const studCache = new Map();
+function studGeometry(width) {
+  if (studCache.has(width)) return studCache.get(width);
+  const parts = [];
+  for (const z of [-WALL_T / 2 + 0.5, WALL_T / 2 - 0.5]) {
+    for (let i = 0; i < Math.floor(width); i++) {
+      const g = new THREE.CylinderGeometry(STUD_TOP_R, STUD_BOT_R, STUD_H, 4, 1, false, Math.PI / 4);
+      g.translate(-width / 2 + 0.5 + i, STUD_H / 2, z);
+      parts.push(g);
+    }
+  }
+  const merged = mergeGeometries(parts);
+  studCache.set(width, merged);
+  return merged;
+}
+
+const boxCache = new Map();
+function boxGeometry(w, h, d) {
+  const k = `${w}|${h}|${d}`;
+  if (!boxCache.has(k)) boxCache.set(k, new THREE.BoxGeometry(w, h, d));
+  return boxCache.get(k);
+}
+const edgeCache = new Map();
+function edgeGeometry(geo, k) {
+  if (!edgeCache.has(k)) edgeCache.set(k, new THREE.EdgesGeometry(geo));
+  return edgeCache.get(k);
+}
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x1a202c, transparent: true, opacity: 0.7 });
+
+// One material array per colour, shared by every block of that size — cloning a
+// six-material set per block would mean 1,800 materials and 1,800 textures.
+const matCache = new Map();
+function blockMaterials(color) {
+  if (matCache.has(color)) return matCache.get(color);
+  const mats = [];
+  for (let i = 0; i < 6; i++) {
+    const m = new THREE.MeshPhongMaterial({ color, shininess: 8 });
+    if (i === 0 || i === 1 || i === 4 || i === 5) {
+      const tex = textTexture.clone();
+      tex.center.set(0, 0);
+      tex.repeat.set(1.5, 1.5);
+      const off = (1.5 - 1) / (2 * 1.5);
+      tex.offset.set(off, off);
+      tex.needsUpdate = true;
+      m.normalMap = tex;
+      m.normalScale = new THREE.Vector2(2.2, -2.2);
+    }
+    mats.push(m);
+  }
+  matCache.set(color, mats);
+  return mats;
+}
+const padMat = new THREE.MeshStandardMaterial({ color: COLORS.pad, roughness: 1, metalness: 0 });
+
+const allBlocks = [];
+function createBlockMesh(spec) {
+  let mesh;
+  if (spec.pad) {
+    mesh = new THREE.Mesh(boxGeometry(spec.sx, PAD_T, spec.sz), padMat);
+  } else {
+    const width = TYPE_WIDTH[spec.type];
+    const geo = boxGeometry(width, COURSE_H, WALL_T);
+    mesh = new THREE.Mesh(geo, blockMaterials(COLORS[spec.type]));
+    if (!spec.flatTop) {
+      const studs = new THREE.Mesh(studGeometry(width), studMat);
+      studs.position.y = COURSE_H / 2;
+      studs.castShadow = true;
+      mesh.add(studs);
+    }
+    mesh.add(new THREE.LineSegments(edgeGeometry(geo, `b${width}`), edgeMat));
+  }
+  mesh.position.set(spec.x, spec.y, spec.z);
+  mesh.rotation.y = spec.ry;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { spec };
+  allBlocks.push(mesh);
+  return mesh;
+}
+
+// ============================================================
+// SCENE
+// ============================================================
+const SCENE_CX = 17, SCENE_CZ = 75;      // centre of an 88' × 152' footprint
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef2f7);
+scene.fog = new THREE.Fog(0xeef2f7, 260, 900);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 2400);
+camera.position.set(167, 130, 290);   // the `iso` preset, so the model opens framed
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.64));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.76);
+dirLight.position.set(SCENE_CX + 110, 170, SCENE_CZ + 130);
+dirLight.target.position.set(SCENE_CX, 0, SCENE_CZ);
+scene.add(dirLight.target);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -150;
+dirLight.shadow.camera.right = 150;
+dirLight.shadow.camera.top = 150;
+dirLight.shadow.camera.bottom = -150;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 620;
+dirLight.shadow.bias = -0.0006;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xb8d4f0, 0.3);
+fillLight.position.set(SCENE_CX - 120, 70, SCENE_CZ - 90);
+scene.add(fillLight);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(900, 900),
+  new THREE.MeshLambertMaterial({ color: 0xdce3eb })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(SCENE_CX, -PAD_T - 0.02, SCENE_CZ);
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(400, 100, 0x94a3b8, 0xc4cdd6);
+grid.position.set(SCENE_CX, -PAD_T - 0.01, SCENE_CZ);
+grid.material.opacity = 0.55;
+grid.material.transparent = true;
+scene.add(grid);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(SCENE_CX, 5, SCENE_CZ);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 10;
+controls.maxDistance = 900;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.update();
+
+const courseGroups = Array.from({ length: N_COURSES }, () => new THREE.Group());
+courseGroups.forEach(g => scene.add(g));
+function buildWall() {
+  courseGroups.forEach(g => { while (g.children.length) g.remove(g.children[0]); });
+  allBlocks.length = 0;
+  populateLayout();
+  BLOCKS.forEach(spec => courseGroups[spec.course].add(createBlockMesh(spec)));
+  updateLegend();
+  applyVisibility();
+  updateLayout();
+}
+
+// ============================================================
+// UI: legend, toggles, camera, tooltip
+// ============================================================
+function updateLegend() {
+  const counts = {};
+  BLOCKS.forEach(b => { if (b.pad) return; const k = invKey(b); counts[k] = (counts[k] || 0) + 1; });
+
+  function renderGroup(title, order) {
+    let rows = '', subtotal = 0;
+    order.forEach(k => {
+      if (!counts[k]) return;
+      subtotal += counts[k];
+      const hex = '#' + COLORS[k.split('|')[0]].toString(16).padStart(6, '0');
+      rows += `
+        <div class="legend-row">
+          <div class="legend-color" style="background:${hex}"></div>
+          <div class="legend-label">${keyLabel(k)}</div>
+          <div class="legend-count">${counts[k]}</div>
+        </div>`;
+    });
+    if (!rows) return '';
+    return `<div class="legend-group-title">${title}</div>${rows}
+      <div class="legend-subtotal"><span>Subtotal</span><span class="count">${subtotal}</span></div>`;
+  }
+
+  const total = BLOCKS.filter(b => !b.pad).length;
+  const extras = state.sectionVisible.pad
+    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Levelling pad (${PAD_W}′ × ${inches(PAD_T)} stone)</span><span class="count">${Math.round(cy(PAD_AREA * PAD_T))} cy</span></div>`
+    : '';
+
+  document.getElementById('legendBody').innerHTML =
+    renderGroup('Standard — studded', STD_ORDER) +
+    renderGroup('C5 cap — cast flat', CAP_ORDER) +
+    `<div class="legend-total">
+      <span class="label">Total blocks</span>
+      <span class="count">${total}</span>
+    </div>` + extras;
+}
+
+function updateLayout() {
+  for (let i = 0; i < courseGroups.length; i++) {
+    courseGroups[i].position.y = state.exploded ? i * EXPLODE_GAP : 0;
+  }
+}
+function applyVisibility() {
+  for (const g of courseGroups) {
+    g.children.forEach(mesh => {
+      const s = mesh.userData.spec;
+      if (!s) return;
+      mesh.visible = s.pad
+        ? state.sectionVisible.pad
+        : state.courseVisible[s.course] && state.sectionVisible[s.section];
+    });
+  }
+}
+
+document.querySelectorAll('[data-course]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const i = parseInt(e.currentTarget.dataset.course);
+    state.courseVisible[i] = !state.courseVisible[i];
+    e.currentTarget.classList.toggle('active', state.courseVisible[i]);
+    applyVisibility();
+  });
+});
+document.querySelectorAll('[data-section]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const key = e.currentTarget.dataset.section;
+    state.sectionVisible[key] = !state.sectionVisible[key];
+    e.currentTarget.classList.toggle('active', state.sectionVisible[key]);
+    applyVisibility();
+    updateLegend();
+  });
+});
+document.getElementById('explodeToggle').addEventListener('click', e => {
+  state.exploded = !state.exploded;
+  e.currentTarget.classList.toggle('active', state.exploded);
+  updateLayout();
+});
+document.getElementById('uiToggle').addEventListener('click', e => {
+  const collapsed = document.body.classList.toggle('ui-collapsed');
+  e.currentTarget.textContent = collapsed ? '☰' : '✕';
+});
+document.getElementById('resetToggle').addEventListener('click', () => {
+  state.exploded = false;
+  document.getElementById('explodeToggle').classList.remove('active');
+  state.courseVisible = [true, true, true, true, true];
+  state.sectionVisible = { pad: true, north: true, west: true, east: true, leg: true };
+  document.querySelectorAll('[data-course], [data-section]').forEach(b => b.classList.add('active'));
+  applyVisibility();
+  updateLegend();
+  updateLayout();
+  animateCamera(PRESETS.iso);
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-view="iso"]').classList.add('active');
+});
+
+const at = (tx, ty, tz, ox, oy, oz) => ({
+  target: new THREE.Vector3(tx, ty, tz),
+  pos: new THREE.Vector3(tx + ox, ty + oy, tz + oz),
+});
+// Stand-offs are sized off the 45° field of view: at distance d the frame is
+// 2·d·tan(22.5°) tall, so `iso` at ~290' frames the 176' plan diagonal with room
+// to spare and `plan` at 220' just clears the 152' length.
+const PRESETS = {
+  iso:    at(SCENE_CX, 5, SCENE_CZ,   150, 125,  215),
+  plan:   at(SCENE_CX, 0, SCENE_CZ,     0, 220, 0.01),
+  entry:  at(30, 6, 118,                0,  26,   95),
+  back:   at(30, 6, 8,                  0,  30,  -95),
+  corner: at(-6, 6, 122,              -62,  38,   70),
+};
+function animateCamera(preset, duration = 650) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const t0 = performance.now();
+  function step() {
+    const t = Math.min((performance.now() - t0) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(startPos, preset.pos, eased);
+    controls.target.lerpVectors(startTarget, preset.target, eased);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    animateCamera(PRESETS[e.currentTarget.dataset.view]);
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+  });
+});
+
+// Hover tooltip (desktop only).
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let isTouch = false;
+window.addEventListener('touchstart', () => { isTouch = true; }, { once: true });
+
+const SECTION_LABEL = { north: 'Back wall', west: 'West wall', east: 'East wall', leg: 'Return', pad: 'Levelling pad' };
+// A block is in a quoin when it crosses one of the three corner squares.
+const CORNERS = [
+  { x: [0, WALL_T], z: [0, WALL_T], name: 'north-west quoin' },
+  { x: [W_OUT - WALL_T, W_OUT], z: [0, WALL_T], name: 'north-east quoin' },
+  { x: [0, WALL_T], z: [CZ_LEG - WALL_T / 2, CZ_LEG + WALL_T / 2], name: 'south-west quoin' },
+];
+function quoinOf(s) {
+  const w = TYPE_WIDTH[s.type], along = s.ry === 0 ? s.x : s.z;
+  const lo = along - w / 2, hi = along + w / 2;
+  for (const c of CORNERS) {
+    const [ax, bx] = s.ry === 0 ? [lo, hi] : [s.x - WALL_T / 2, s.x + WALL_T / 2];
+    const [az, bz] = s.ry === 0 ? [s.z - WALL_T / 2, s.z + WALL_T / 2] : [lo, hi];
+    if (ax < c.x[1] - 1e-6 && bx > c.x[0] + 1e-6 && az < c.z[1] - 1e-6 && bz > c.z[0] + 1e-6) return c.name;
+  }
+  return null;
+}
+function findSpecAncestor(o) {
+  while (o && !o.userData?.spec) o = o.parent;
+  return o;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+  if (isTouch) return;
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(allBlocks, true);
+  for (const h of hits) {
+    const obj = findSpecAncestor(h.object);
+    if (!obj || !obj.visible) continue;
+    const s = obj.userData.spec;
+    if (s.pad) {
+      tooltip.innerHTML = `<strong>${TYPE_NAMES.pad}</strong> · ${PAD_W}′ × ${inches(PAD_T)} compacted · under the ${s.run}`;
+    } else {
+      const q = quoinOf(s);
+      tooltip.innerHTML = `<strong>${TYPE_NAMES[s.type]}</strong> · ${SECTION_LABEL[s.section]} · C${s.course + 1}`
+        + (q ? ` · ${q}` : '') + (s.flatTop ? ' · flat top' : '');
+    }
+    tooltip.style.left = e.clientX + 'px';
+    tooltip.style.top = e.clientY + 'px';
+    tooltip.style.display = 'block';
+    return;
+  }
+  tooltip.style.display = 'none';
+});
+renderer.domElement.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; });
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => setTimeout(onResize, 100));
+
+buildWall();
+
+// ============================================================
+// DELIVERY PICK LIST — bill of materials + truck loads.
+// Nothing has been pulled yet: fill TAKEN in as loads leave the yard and the
+// list re-reconciles itself.
+// ============================================================
+const WALL_LF     = W_OUT + WEST_LEN + EAST_LEN + LEG_LEN;   // 362 lf of wall
+const LB_PER_FT   = 3500 / 6;      // a 6' × 2' × 2' block = 3500 lb
+const blockWeight = (type) => TYPE_WIDTH[type] * LB_PER_FT;
+const PICK_KEY    = 'parkingLotWall.pickList.v1';
+let picked = {};
+try { picked = JSON.parse(localStorage.getItem(PICK_KEY)) || {}; } catch (e) { picked = {}; }
+function savePicked() { try { localStorage.setItem(PICK_KEY, JSON.stringify(picked)); } catch (e) {} }
+const fmtLb = (n) => Math.round(n).toLocaleString();
+const fmtN  = (n) => Math.round(n).toLocaleString();
+
+// Yard reconciliation — nothing taken yet.
+const TAKEN = {};
+const RECON_ORDER = [...STD_ORDER, ...CAP_ORDER];
+
+// Build order: course by course, and within a course around the enclosure
+// back → west → east → return, laying each run from its start station.
+const SECTION_ORDER = ['north', 'west', 'east', 'leg'];
+function buildOrder() {
+  return BLOCKS.filter(b => !b.pad).slice().sort((a, b) =>
+    a.course - b.course ||
+    SECTION_ORDER.indexOf(a.section) - SECTION_ORDER.indexOf(b.section) ||
+    a.station - b.station);
+}
+function computeRemaining() {
+  const all = buildOrder();
+  const stock = { ...TAKEN };
+  const remaining = [];
+  for (const b of all) {
+    const k = invKey(b);
+    if ((stock[k] || 0) > 0) stock[k]--;
+    else remaining.push(b);
+  }
+  return { all, remaining, extras: stock };
+}
+
+// Remaining blocks greedy-packed to the 70k truck's nominal 70,000 lb.
+const LOAD_TRUCK = { name: '70k truck', max: 70000 };
+function computeLoads() {
+  const { remaining } = computeRemaining();
+  const loads = [];
+  let cur = { truck: LOAD_TRUCK, weight: 0, blocks: [] };
+  for (const b of remaining) {
+    const w = blockWeight(b.type);
+    // Weights are multiples of 3500/6 — epsilon keeps float drift from
+    // spilling an exactly-full load into a phantom extra trip.
+    if (cur.blocks.length && cur.weight + w > LOAD_TRUCK.max + 1e-6) {
+      loads.push(cur);
+      cur = { truck: LOAD_TRUCK, weight: 0, blocks: [] };
+    }
+    cur.weight += w; cur.blocks.push(b);
+  }
+  if (cur.blocks.length) loads.push(cur);
+  return loads;
+}
+function loadLines(load) {
+  const map = new Map();
+  for (const b of load.blocks) {
+    const k = [b.course, b.section, b.type, finishOf(b)].join('|');
+    map.set(k, (map.get(k) || 0) + 1);
+  }
+  return [...map.entries()].map(([k, count]) => {
+    const [course, section, type, finish] = k.split('|');
+    return { course: +course, section, type, finish, count, weight: count * blockWeight(type) };
+  }).sort((a, b) => a.course - b.course ||
+    SECTION_ORDER.indexOf(a.section) - SECTION_ORDER.indexOf(b.section) ||
+    TYPE_WIDTH[b.type] - TYPE_WIDTH[a.type]);
+}
+
+// The one placed material in the model. Reinforcement, drainage and backfill
+// are real scope on this wall but are not drawn or counted here.
+const PAD_CY = cy(PAD_AREA * PAD_T);
+const MATERIALS = [
+  { name: `Levelling pad — 3/4″ crushed stone, ${PAD_W}′-0″ × ${inches(PAD_T)} compacted`,
+    qty: `${fmtN(PAD_CY)} cy`,
+    note: `${fmtN(PAD_AREA)} sf under all four runs · ≈${fmtN(PAD_CY * 1.4)} tons · top of pad 12″ below finished grade, which buries the bottom foot of C1 and leaves ${ftin(WALL_H - 1)} of face showing` },
+];
+
+const pickListEl = document.getElementById('pickList');
+function renderPickList() {
+  const { all, remaining, extras } = computeRemaining();
+  const loads = computeLoads();
+  const totalBlocks = all.length;
+  const totalLb = all.reduce((s, b) => s + blockWeight(b.type), 0);
+  const remainingLb = remaining.reduce((s, b) => s + blockWeight(b.type), 0);
+  const filled = totalBlocks - remaining.length;
+  const takenCount = Object.values(TAKEN).reduce((a, c) => a + c, 0);
+  const extraCount = Object.values(extras).reduce((a, c) => a + c, 0);
+  const extraList = Object.entries(extras).filter(([, n]) => n > 0)
+    .map(([k, n]) => `${n}× ${keyLabel(k)}`).join(', ');
+
+  const needed = {}, left = {};
+  all.forEach(b => { const k = invKey(b); needed[k] = (needed[k] || 0) + 1; });
+  remaining.forEach(b => { const k = invKey(b); left[k] = (left[k] || 0) + 1; });
+  const reconRows = RECON_ORDER.map(k => {
+    if (!needed[k]) return '';
+    const l = left[k] || 0, x = extras[k] || 0;
+    const cell = l > 0 ? `<span class="pl-left">${l}</span>`
+      : x > 0 ? `<span class="pl-extra">0 · ${x} extra</span>`
+      : `<span class="pl-done">0 ✓</span>`;
+    return `<tr><td>${keyLabel(k)}</td><td>${needed[k]}</td><td>${TAKEN[k] || 0}</td><td>${cell}</td></tr>`;
+  }).join('');
+
+  const matRows = MATERIALS.map(m =>
+    `<tr><td>${m.name}<div class="pl-note" style="margin:2px 0 0">${m.note}</div></td><td>${m.qty}</td></tr>`
+  ).join('');
+
+  let gotBlocks = 0;
+  const cards = loads.map((load, li) => {
+    const cs = [...new Set(load.blocks.map(b => b.course + 1))].sort((a, b) => a - b);
+    const range = cs.length === 1 ? `C${cs[0]}` : `C${cs[0]}–C${cs[cs.length - 1]}`;
+    const secs = [...new Set(load.blocks.map(b => SECTION_LABEL[b.section]))].join(' · ');
+    const rows = loadLines(load).map(ln => {
+      const key = `L${li}-${ln.course}-${ln.section}-${ln.type}-${ln.finish}`;
+      const done = !!picked[key];
+      if (done) gotBlocks += ln.count;
+      return `<div class="pl-row${done ? ' done' : ''}" data-key="${key}">
+        <div class="pl-check">${done ? '✓' : ''}</div>
+        <div class="pl-row-main">
+          <div class="pl-row-label">C${ln.course + 1} · ${SECTION_LABEL[ln.section]} · ${keyLabel(ln.type + '|' + ln.finish)}</div>
+          <div class="pl-row-sub">×${ln.count} · ${fmtLb(ln.weight)} lb</div>
+        </div>
+      </div>`;
+    }).join('');
+    const pct = Math.round(load.weight / load.truck.max * 100);
+    return `<div class="pl-load">
+      <div class="pl-load-head">
+        <div class="pl-load-name">Load ${li + 1} — ${load.truck.name}</div>
+        <div class="pl-load-meta">${range} · ${secs} · ${fmtLb(load.weight)} / ${fmtLb(load.truck.max)} lb</div>
+      </div>
+      <div class="pl-load-bar"><div class="pl-load-fill" style="width:${pct}%"></div></div>
+      <div class="pl-rows">${rows}</div>
+    </div>`;
+  }).join('');
+  const gotPct = Math.round((filled + gotBlocks) / totalBlocks * 100);
+  pickListEl.innerHTML = `
+    <div class="pl-top">
+      <div class="pl-title">Delivery Pick List <span class="pl-sub">— Parking Lot Wall</span></div>
+      <button class="pl-print" aria-label="Print">🖨 Print</button>
+      <button class="pl-close" aria-label="Close">✕</button>
+    </div>
+    <div class="pl-wrap">
+      <div class="pl-summary">
+        <div class="pl-summary-line">${fmtN(WALL_LF)}′ of wall, ${ftin(WALL_H)} at the tallest · <strong>${totalBlocks}</strong> blocks · <strong>${fmtLb(totalLb)}</strong> lb (${fmtN(totalLb / 2000)} tons)</div>
+        <div class="pl-summary-line" style="margin-top:4px">Taken to date: <strong>${takenCount}</strong> blocks (${extraCount} extra) · Left to take: <strong>${remaining.length}</strong> blocks · <strong>${fmtLb(remainingLb)}</strong> lb in ${loads.length} loads</div>
+        <div class="pl-progress"><div class="pl-progress-fill" style="width:${gotPct}%"></div></div>
+        <div class="pl-progress-text">${filled + gotBlocks} of ${totalBlocks} block positions covered · ${gotPct}%</div>
+        <div class="pl-note">Loads run in build order — C1 up, and around the enclosure back → west → east → return — so a truck can be unloaded straight into the course being laid. Tick rows as they come off the yard. The <strong>C5 flat-tops</strong> are their own casting: nothing stacks on a studless top, so they are not interchangeable with the studded stock. Pad stone ships separately.</div>
+        <button class="pl-reset">Reset checklist</button>
+      </div>
+      <div class="pl-summary">
+        <div class="pl-recon-title">Bill of materials — design vs taken</div>
+        <table class="pl-table">
+          <thead><tr><th>Block</th><th>Needed</th><th>Taken</th><th>Left</th></tr></thead>
+          <tbody>${reconRows}</tbody>
+        </table>
+        <div class="pl-note">Extras on site: ${extraList || 'none'}. The 2′ blocks are mid-run make-ups only — never at a wall end or in a quoin.</div>
+      </div>
+      <div class="pl-summary">
+        <div class="pl-recon-title">Placed materials</div>
+        <table class="pl-table">
+          <thead><tr><th>Item</th><th>Qty</th></tr></thead>
+          <tbody>${matRows}</tbody>
+        </table>
+        <div class="pl-note">Not part of the block loads. Wall reinforcement, the drainage chimney and the pad backfill are separate scope and are not counted here.</div>
+      </div>
+      ${cards}
+    </div>`;
+}
+pickListEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.pl-row');
+  if (row) {
+    const key = row.dataset.key;
+    if (picked[key]) delete picked[key]; else picked[key] = true;
+    savePicked();
+    const st = pickListEl.scrollTop; renderPickList(); pickListEl.scrollTop = st;
+    return;
+  }
+  if (e.target.closest('.pl-print')) { window.print(); return; }
+  if (e.target.closest('.pl-close')) {
+    pickListEl.classList.remove('open');
+    document.body.classList.remove('pl-open');
+    return;
+  }
+  if (e.target.closest('.pl-reset')) {
+    if (confirm('Clear all picked-up checkmarks?')) {
+      picked = {}; savePicked();
+      const st = pickListEl.scrollTop; renderPickList(); pickListEl.scrollTop = st;
+    }
+    return;
+  }
+});
+document.getElementById('pickListBtn').addEventListener('click', () => {
+  renderPickList();
+  pickListEl.classList.add('open');
+  document.body.classList.add('pl-open');
+  pickListEl.scrollTop = 0;
+});
+
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+</body>
+</html>
