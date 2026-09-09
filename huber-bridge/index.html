@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Huber Bridge — Russell Stream, Golden Road Mile 59 · precast plank deck on five W40×199</title>
+<style>
+  :root {
+    --bg: #eef2f6;
+    --ink: #0f172a;
+    --muted: #526073;
+    --panel: rgba(255,255,255,0.88);
+    --panel-solid: #ffffff;
+    --line: rgba(15,23,42,0.10);
+    --accent: #2563eb;
+    --accent-2: #1d4ed8;
+    --amber: #d97706;
+    --ok: #16a34a;
+    --radius: 12px;
+    --dock-h: 66px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --shadow: 0 10px 30px rgba(15,23,42,0.12), 0 1px 2px rgba(15,23,42,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    color-scheme: light;
+    font-size: 14px; line-height: 1.35;
+  }
+  canvas { display: block; touch-action: none; }
+  .panel, #quant { touch-action: pan-y; }
+  button { font-family: inherit; }
+  #app { position: fixed; inset: 0; }
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; gap: 14px;
+    padding: 9px 14px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.78));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  #header .brand { min-width: 0; }
+  #header h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #header h1 .sub { font-weight: 500; color: var(--muted); }
+  #header .dims { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .hdr-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .hbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 13px; border-radius: 10px;
+    border: 1px solid rgba(15,23,42,0.12); background: rgba(255,255,255,0.7);
+    color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .hbtn.primary:hover { background: var(--accent-2); }
+  .hbtn:active { transform: scale(0.97); }
+  #menuBtn { width: 40px; padding: 0; justify-content: center; font-size: 18px; }
+
+  /* ── Panels (glass) ─────────────────────────────────────── */
+  .panel {
+    background: var(--panel);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .sec-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  #side {
+    position: fixed; z-index: 90;
+    left: 12px; top: 68px; width: 292px;
+    max-height: calc(100% - 68px - var(--dock-h) - 28px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  #side { transition: transform .28s ease, opacity .28s ease; }
+  #side.collapsed { transform: translateX(-118%); opacity: 0; pointer-events: none; }
+  #side .tabs { display: none; }
+  #side .sec { display: block; }
+  #side .sec + .sec { border-top: 1px solid var(--line); padding-top: 12px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 34px; padding: 6px 11px; border-radius: 999px;
+    border: 1px solid rgba(15,23,42,0.14); background: rgba(255,255,255,0.7);
+    color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer; line-height: 1.1;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .chip:hover { border-color: rgba(37,99,235,0.5); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.off { opacity: 0.55; text-decoration: line-through; }
+  .chip .sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
+  .chip.small { min-height: 30px; padding: 4px 10px; font-size: 12px; }
+
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .row .lbl { font-size: 13px; font-weight: 600; flex: 1; }
+  .row .val { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; flex: 1; min-width: 0; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(15,23,42,0.14); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); margin-top: -7px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(15,23,42,0.14); }
+  input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); }
+
+  .switch { position: relative; width: 44px; height: 26px; border-radius: 13px; border: none; background: rgba(15,23,42,0.18); cursor: pointer; flex-shrink: 0; transition: background .15s; }
+  .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: left .15s; }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { left: 21px; }
+
+  .seg { display: inline-flex; border: 1px solid rgba(15,23,42,0.14); border-radius: 9px; overflow: hidden; background: rgba(255,255,255,0.7); }
+  .seg button { min-height: 32px; padding: 4px 10px; border: none; background: transparent; font-size: 12px; font-weight: 600; color: var(--ink); cursor: pointer; }
+  .seg button + button { border-left: 1px solid rgba(15,23,42,0.12); }
+  .seg button.active { background: var(--accent); color: #fff; }
+
+  /* ── Info card (selection) ──────────────────────────────── */
+  #infoCard {
+    position: fixed; z-index: 95; right: 12px; top: 68px; width: 300px; padding: 12px 12px 10px;
+  }
+  #infoCard .kind { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  #infoCard .title { font-size: 16px; font-weight: 700; margin: 2px 0 6px; }
+  #infoCard .lines { font-size: 12.5px; color: var(--muted); }
+  #infoCard .lines div { padding: 2px 0; border-top: 1px dashed rgba(15,23,42,0.08); }
+  #infoCard .lines div:first-child { border-top: none; }
+  #infoCard .lines b { color: var(--ink); font-weight: 600; }
+  #infoCard .actions { display: flex; gap: 6px; margin-top: 10px; }
+  #infoCard .close { position: absolute; top: 6px; right: 8px; width: 30px; height: 30px; border: none; background: transparent; font-size: 18px; color: var(--muted); cursor: pointer; border-radius: 8px; }
+  #infoCard .close:hover { background: rgba(15,23,42,0.06); }
+
+  /* ── Isolate bar ────────────────────────────────────────── */
+  #isoBar {
+    position: fixed; z-index: 96; top: 68px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px;
+    white-space: nowrap; max-width: calc(100% - 24px);
+  }
+  #isoBar .t { font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #isoBar .nav, #isoBar button.back { flex-shrink: 0; }
+  #isoBar .t span { color: var(--muted); font-weight: 500; }
+  #isoBar .nav { display: inline-flex; gap: 2px; }
+  #isoBar button.ic { width: 34px; height: 34px; border-radius: 9px; border: 1px solid rgba(15,23,42,0.12); background: rgba(255,255,255,0.7); cursor: pointer; font-size: 15px; }
+  #isoBar button.back { height: 34px; padding: 0 12px; border-radius: 9px; border: none; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; }
+
+  /* ── Timeline dock ──────────────────────────────────────── */
+  #dock {
+    position: fixed; z-index: 100; bottom: 12px; left: 50%; transform: translateX(-50%);
+    width: min(980px, calc(100% - 24px)); height: var(--dock-h);
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+    padding: 8px 12px;
+  }
+  #playBtn {
+    width: 46px; height: 46px; border-radius: 50%; border: none; background: var(--accent); color: #fff;
+    font-size: 18px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+  }
+  #playBtn:hover { background: var(--accent-2); }
+  #playBtn:active { transform: scale(0.96); }
+  .tl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .chapters { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+  .chapters::-webkit-scrollbar { display: none; }
+  .chapters button {
+    flex-shrink: 0; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .chapters button:hover { background: rgba(15,23,42,0.06); }
+  .chapters button.active { background: rgba(37,99,235,0.12); color: var(--accent); border-color: rgba(37,99,235,0.25); }
+  .chapters button.done { color: var(--ink); }
+  .scrub { position: relative; height: 22px; display: flex; align-items: center; }
+  .scrub input { width: 100%; height: 22px; position: relative; z-index: 2; }
+  .scrub .fill { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--accent); pointer-events: none; z-index: 1; width: 0; }
+  .scrub .ticks { position: absolute; left: 0; right: 0; top: 7px; height: 8px; pointer-events: none; z-index: 1; }
+  .scrub .ticks i { position: absolute; top: 0; width: 2px; height: 8px; margin-left: -1px; border-radius: 1px; background: rgba(15,23,42,0.28); }
+  .dock-right { display: flex; gap: 6px; align-items: center; }
+  .dbtn {
+    height: 34px; padding: 0 11px; border-radius: 9px; border: 1px solid rgba(15,23,42,0.12);
+    background: rgba(255,255,255,0.7); color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .dbtn.active { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.35); color: var(--accent); }
+  .dbtn:active { transform: scale(0.97); }
+  #timeLbl { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+  .zoom { display: inline-flex; }
+  .zoom .dbtn { border-radius: 0; padding: 0 9px; }
+  .zoom .zb { width: 34px; padding: 0; font-size: 16px; }
+  .zoom .zl { min-width: 72px; font-variant-numeric: tabular-nums; }
+  .zoom .dbtn:first-child { border-radius: 9px 0 0 9px; }
+  .zoom .dbtn:last-child { border-radius: 0 9px 9px 0; }
+  .zoom .dbtn + .dbtn { border-left: none; }
+
+  /* ── Caption (chapter title during playback) ────────────── */
+  #caption {
+    position: fixed; z-index: 98; left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--dock-h) + 26px);
+    max-width: min(640px, calc(100% - 32px));
+    padding: 10px 16px; border-radius: 12px;
+    background: rgba(15,23,42,0.86); color: #fff;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+    opacity: 0; transition: opacity .25s;
+  }
+  #caption.show { opacity: 1; }
+  #caption .c-k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #93c5fd; }
+  #caption .c-t { font-size: 15px; font-weight: 700; margin-top: 1px; }
+  #caption .c-d { font-size: 12.5px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+  /* ── Tooltip (hover / tap) ──────────────────────────────── */
+  #tooltip {
+    position: fixed; z-index: 120; pointer-events: none;
+    background: rgba(15,23,42,0.92); color: #fff; padding: 7px 10px; border-radius: 9px;
+    font-size: 12.5px; line-height: 1.3; max-width: 260px;
+    opacity: 0; transition: opacity .12s; transform: translate(12px, 12px);
+    box-shadow: var(--shadow);
+  }
+  #tooltip.show { opacity: 1; }
+  #tooltip b { font-weight: 700; display: block; }
+  #tooltip span { color: rgba(255,255,255,0.78); }
+
+  /* ── Callout labels (CSS2D) ─────────────────────────────── */
+  .callout { position: relative; pointer-events: none; transform: translate(0, -50%); }
+  .callout .dot { position: absolute; left: -5px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+  .callout .box {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.95); border: 1px solid rgba(37,99,235,0.35); border-radius: 8px;
+    padding: 5px 8px; white-space: nowrap; font-size: 12px; line-height: 1.25; color: var(--ink);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.14);
+  }
+  .callout .box b { font-weight: 700; display: block; font-size: 12px; }
+  .callout .box span { color: var(--muted); font-size: 11.5px; }
+  .callout.left .box { left: auto; right: 12px; text-align: right; }
+
+  /* ── Quantities overlay ─────────────────────────────────── */
+  #quant { position: fixed; inset: 0; z-index: 500; background: #eef2f7; display: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #quant.open { display: block; }
+  .q-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .q-title { font-size: 18px; font-weight: 700; }
+  .q-sub { font-size: 12.5px; color: var(--muted); }
+  .q-wrap { max-width: 900px; margin: 0 auto; padding: 18px; }
+  .q-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(15,23,42,0.05); }
+  .q-card h3 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .q-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .q-table th, .q-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(15,23,42,0.08); vertical-align: top; }
+  .q-table th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .q-table td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .q-table th.n { text-align: right; }
+  .q-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .q-tile { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .q-tile .v { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .q-tile .k { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .q-note { font-size: 12.5px; color: var(--muted); }
+  .q-note li { margin: 4px 0 4px 18px; }
+
+  /* ── Loading ────────────────────────────────────────────── */
+  #loading { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; background: var(--bg); color: var(--muted); font-size: 14px; transition: opacity .4s; }
+  #loading.hide { opacity: 0; pointer-events: none; }
+  #loading .sp { width: 26px; height: 26px; border: 3px solid rgba(15,23,42,0.12); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Auto-cam resume pill ───────────────────────────────── */
+  #camPill {
+    position: fixed; z-index: 97; left: 50%; transform: translateX(-50%);
+    top: 68px;
+    height: 34px; padding: 0 14px; border-radius: 999px; border: none;
+    background: var(--ink); color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    box-shadow: var(--shadow); display: none;
+  }
+  #camPill.show { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ── One-time hint ──────────────────────────────────────── */
+  #hint {
+    position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    padding: 10px 16px; border-radius: 999px; background: rgba(15,23,42,0.78); color: #fff;
+    font-size: 13px; font-weight: 600; pointer-events: none; white-space: nowrap;
+    box-shadow: var(--shadow); transition: opacity .4s; opacity: 0;
+  }
+  #hint.show { opacity: 1; }
+  #hint span { color: rgba(255,255,255,0.55); padding: 0 6px; }
+
+  [hidden] { display: none !important; }
+
+  /* ── Mobile ─────────────────────────────────────────────── */
+  @media (max-width: 820px) {
+    :root { --dock-h: 92px; }
+    #header { padding: 8px 10px; gap: 8px; }
+    #header h1 { font-size: 14px; }
+    #header h1 .sub { display: none; }
+    #header .dims { display: none; }
+    #quantBtn .txt { display: none; }
+    #quantBtn { padding: 0 10px; }
+    #side.collapsed { transform: translateY(110%); opacity: 1; pointer-events: auto; }
+    #side.collapsed.open { transform: translateY(0); }
+    #timeLbl { min-width: 0; }
+    #timeLbl .tot { display: none; }
+    .zoom .zl { min-width: 60px; }
+    .zoom .zb { width: 32px; }
+
+    #side {
+      left: 0; right: 0; top: auto; width: auto;
+      bottom: calc(var(--dock-h) + var(--safe-b));
+      max-height: 46vh; max-height: 46dvh;
+      border-radius: 14px 14px 0 0; border-bottom: none;
+      transform: translateY(110%); transition: transform .25s ease;
+      padding: 8px 12px 12px; gap: 10px;
+    }
+    #side.open { transform: translateY(0); }
+    #side .tabs { display: flex; gap: 4px; padding: 2px; border-radius: 10px; background: rgba(15,23,42,0.06); }
+    #side .tabs button { flex: 1; height: 34px; border: none; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+    #side .tabs button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
+    #side .sec { display: none; }
+    #side .sec.active { display: block; }
+    #side .sec + .sec { border-top: none; padding-top: 0; }
+    #side .hint { display: none; }
+
+    #infoCard { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(var(--dock-h) + var(--safe-b) + 8px); padding: 10px 12px 8px; }
+    #infoCard .lines { max-height: 92px; overflow-y: auto; }
+    #isoBar { top: 60px; padding: 4px 6px 4px 10px; gap: 6px; }
+    #isoBar .t { font-size: 12px; }
+
+    #dock {
+      bottom: 0; width: 100%; border-radius: 14px 14px 0 0; border-bottom: none;
+      padding: 8px 12px calc(8px + var(--safe-b)); height: auto;
+      grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 6px 10px;
+    }
+    #playBtn { width: 42px; height: 42px; grid-row: 1 / span 2; }
+    .tl { grid-column: 2; }
+    .dock-right { grid-column: 2; justify-content: space-between; }
+    .dbtn { height: 36px; padding: 0 10px; font-size: 12px; }
+    .chapters button { height: 34px; padding: 0 11px; font-size: 12px; }
+    .scrub { height: 28px; }
+    .scrub input { height: 28px; }
+    .scrub .fill { top: 12px; }
+    .scrub .ticks { top: 10px; }
+    input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; }
+    #caption { bottom: calc(var(--dock-h) + var(--safe-b) + 14px); padding: 8px 12px; }
+    #caption .c-t { font-size: 13.5px; }
+    #caption .c-d { font-size: 12px; }
+    #camPill { top: 60px; }
+    #header, .panel { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    #header { background: rgba(255,255,255,0.96); }
+    .panel { background: rgba(255,255,255,0.96); }
+    #isoBar .t span { display: none; }
+    .callout .box { white-space: normal; max-width: min(200px, 46vw); }
+    #infoCard .close { width: 36px; height: 36px; }
+    .chip.small { min-height: 36px; }
+    .switch { width: 48px; height: 28px; }
+    #isoBar button.ic, #isoBar button.back { height: 40px; }
+    .callout .box { font-size: 11px; padding: 4px 6px; }
+  }
+  @media (max-width: 820px) and (max-height: 520px) {
+    #side { max-height: 60vh; max-height: 60dvh; }
+    #infoCard { left: auto; right: 8px; top: 60px; bottom: auto; width: min(300px, 46vw); max-height: calc(100% - 60px - var(--dock-h) - 12px); overflow-y: auto; }
+    #caption { max-width: min(420px, 60vw); }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="labels"></div>
+
+<div id="header">
+  <div class="brand">
+    <h1>Huber Bridge <span class="sub">· Russell Stream · Golden Road Mile 59</span></h1>
+    <div class="dims" id="dimsLabel"></div>
+  </div>
+  <div class="hdr-actions">
+    <button class="hbtn primary" id="quantBtn" aria-label="Quantities">📋 <span class="txt">Quantities</span></button>
+    <button class="hbtn" id="menuBtn" aria-label="Show or hide controls">☰</button>
+  </div>
+</div>
+
+<aside id="side" class="panel">
+  <div class="tabs" id="sideTabs">
+    <button data-tab="parts" class="active">Parts</button>
+    <button data-tab="layers">Layers</button>
+    <button data-tab="camera">Camera</button>
+  </div>
+  <section class="sec active" data-panel="parts">
+    <div class="sec-title">Single out a part</div>
+    <div class="chips" id="partChips"></div>
+    <p class="hint">Hover anything in the scene for a callout. Click to select it, then isolate.</p>
+  </section>
+  <section class="sec" data-panel="layers">
+    <div class="sec-title">Layers</div>
+    <div class="chips" id="layerChips"></div>
+    <div class="row"><span class="lbl">X-ray concrete</span><button class="switch" id="xrayBtn" aria-label="X-ray concrete"></button></div>
+    <div class="row"><span class="lbl">Explode</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0" aria-label="Explode the assembly"><span class="val" id="explodeVal">0%</span></div>
+    <div class="row"><span class="lbl">End planks</span></div>
+    <div class="seg" id="endMode">
+      <button data-v="precast" class="active">Precast skew</button>
+      <button data-v="cip">CIP by others</button>
+      <button data-v="none">None</button>
+    </div>
+  </section>
+  <section class="sec" data-panel="camera">
+    <div class="sec-title">Camera</div>
+    <div class="chips" id="camChips"></div>
+  </section>
+</aside>
+
+<div id="infoCard" class="panel" hidden>
+  <button class="close" id="infoClose" aria-label="Close">×</button>
+  <div class="kind" id="infoKind"></div>
+  <div class="title" id="infoTitle"></div>
+  <div class="lines" id="infoLines"></div>
+  <div class="actions">
+    <button class="chip active" id="isolateBtn">◎ Isolate</button>
+    <button class="chip" id="deselectBtn">Deselect</button>
+  </div>
+</div>
+
+<div id="isoBar" class="panel" hidden>
+  <div class="t" id="isoTitle"></div>
+  <div class="nav"><button class="ic" id="isoPrev" aria-label="Previous">‹</button><button class="ic" id="isoNext" aria-label="Next">›</button></div>
+  <button class="back" id="isoBack">Back to bridge</button>
+</div>
+
+<div id="dock" class="panel">
+  <button id="playBtn" aria-label="Play or pause the build">▶</button>
+  <div class="tl">
+    <div class="chapters" id="chapters"></div>
+    <div class="scrub">
+      <div class="fill" id="scrubFill"></div>
+      <div class="ticks" id="ticks"></div>
+      <input type="range" id="scrub" min="0" max="1000" step="1" value="1000" aria-label="Build timeline">
+    </div>
+  </div>
+  <div class="dock-right">
+    <span id="timeLbl">0:00</span>
+    <button class="dbtn" id="speedBtn" title="Playback speed">1×</button>
+    <button class="dbtn active" id="autocamBtn" title="Camera follows the build">🎥 Auto</button>
+    <span class="zoom"><button class="dbtn zb" id="zoomOut" aria-label="Auto camera farther">−</button><button class="dbtn zl" id="zoomLbl">🔍 1.0×</button><button class="dbtn zb" id="zoomIn" aria-label="Auto camera closer">+</button></span>
+  </div>
+</div>
+
+<div id="caption"><div class="c-k" id="capK"></div><div class="c-t" id="capT"></div><div class="c-d" id="capD"></div></div>
+<button id="camPill">🎥 Resume auto camera</button>
+<div id="hint">Drag to orbit<span>·</span>Tap a part<span>·</span>▶ Play the build</div>
+<div id="tooltip"></div>
+<div id="quant"></div>
+<div id="loading"><div><div class="sp"></div><span id="loadMsg">Loading 3D scene…</span></div></div>
+
+<script>
+  // Surface CDN / WebGL failures on the loading overlay instead of spinning forever.
+  window.showLoadError = function (msg) {
+    var l = document.getElementById('loading'); if (!l || l.classList.contains('hide') || window.__loadErr) return;
+    window.__loadErr = msg;
+    var sp = l.querySelector('.sp'); if (sp) sp.style.display = 'none';
+    var m = document.getElementById('loadMsg'); if (m) { m.textContent = msg; m.style.maxWidth = '340px'; m.style.display = 'inline-block'; m.style.textAlign = 'center'; m.style.lineHeight = '1.4'; }
+  };
+  window.addEventListener('error', function (e) {
+    var t = e.target; if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) window.showLoadError('A library failed to load from the CDN. Check the internet connection and reload.');
+    else if (e.message) window.showLoadError('The 3D scene hit an error: ' + e.message);
+  }, true);
+  window.addEventListener('unhandledrejection', function () { window.showLoadError('The 3D scene failed to start. Reload the page.'); });
+  if (HTMLScriptElement.supports && !HTMLScriptElement.supports('importmap')) window.showLoadError('This browser is too old for the 3D scene (needs import maps: Chrome 89+, Safari 16.4+, Firefox 108+).');
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ============================================================
+// CONFIG — HUBER BRIDGE · Russell Stream · Golden Road Mile 59
+// ============================================================
+// Every dimension that drives the model lives in this block. Units are FEET;
+// write inches as  n * IN.  Change a number here and the geometry, the
+// animation, the callouts and the quantities all follow.
+//
+// Coordinate system
+//   origin  = bridge centre, at TOP OF STEEL (= top of the existing abutments,
+//             EL 100'-0" on the engineer's plan)
+//   +X      = along the bridge, east → west
+//   +Y      = up
+//   +Z      = across the bridge (toward the north curb)
+// Planks bear on the girder top flanges at y = 0; plank tops are at y = plank.t.
+//
+// Source for the steel + abutments: Foresight Engineering job 26002 R0
+// (4/26/2026), "Replace Russell Stream Bridge, Golden Road Mile 59, 230 kip
+// truck rated". Girders, diaphragms and bearings are drawn from that plan; the
+// precast planks + curbs are ours and replace sheets 11, 18 and 19.
+const IN = 1 / 12;
+
+const CONFIG = {
+  project: {
+    name: 'Huber Bridge',
+    site: 'Russell Stream · Golden Road Mile 59',
+    owner: 'Huber Resources Corp.',
+    engineer: 'Foresight Engineering P.C. · job 26002 R0 · 4/26/2026',
+    rating: '230 kip truck rated',
+  },
+
+  // ── New support steel (by others, per the engineered plan) ──────────────
+  girder: {
+    count: 5,
+    section: 'W40×199',
+    d: 38.7 * IN, bf: 15.8 * IN, tf: 1.07 * IN, tw: 0.65 * IN,   // AISC W40×199
+    length: 63,
+    spacing: 40 * IN,               // 3'-4" o.c.
+    bearingCC: 61 + 7 / 12,         // 61'-7" centre-to-centre of bearings
+    weightPlf: 199,
+    // The abutments are skewed: each girder is shifted this much along the
+    // bridge relative to its neighbour (read from the diaphragm plate
+    // positions on sheets 13-17: 11'-7", 9'-11", 8'-3", 6'-7", 4'-11").
+    staggerPerBeam: 20 * IN,        // 1'-8"  → tan(skew) = 1'-8" / 3'-4" = 0.5
+    paint: 'SSPC-SP10 blast · Dura-Plate 235 epoxy ×2 · Acrolon 218HS urethane',
+  },
+  diaphragm: {
+    section: 'MC18×42.7',
+    d: 18 * IN, bf: 4 * IN, tw: 0.45 * IN, tf: 0.625 * IN,
+    length: 38 * IN,                // 3'-2"
+    linesFromEnd: [11 + 7 / 12, 27 + 1 / 12, 42 + 7 / 12, 58 + 1 / 12], // from the end of P#5 (15'-6" o.c.)
+    boltsPerEnd: 5, boltDia: 0.75 * IN, boltSpacing: 3 * IN,
+    plate: { t: 5 / 16 * IN, w: 4 * IN, h: 18 * IN },
+    weightPlf: 42.7,
+  },
+  bearing: {
+    // Short W12×65 column stubs under each girder end (3-5/8" at the expansion end, 5-1/2" at the
+    // fixed end) so the stub + plate stack is 7"; B.O. plate EL 96'-2 3/8" = 3'-9 5/8" below top of steel.
+    stub: 'W12×65', stubD: 12.1 * IN, stubBf: 12 * IN, stubTf: 0.6 * IN, stubTw: 0.39 * IN, stubH: 5.5 * IN,
+    plate: { l: 15 * IN, w: 22 * IN, t: 1.5 * IN },   // 1'-3" along the beam × 1'-10" across × 1-1/2"
+    groutT: 2 * IN,
+    anchorDia: 1 * IN, anchorSpacing: 18 * IN, anchorProj: 3 * IN, // (2) 1"Ø threaded rods per plate, 18" o.c. across the beam
+  },
+
+  // ── Existing abutments (kept) ───────────────────────────────────────────
+  abutment: {
+    faceX: 29.5,          // stream face at the bridge centreline, ± from origin
+    thickness: 3.5,       // stem thickness along the bridge
+    span: 26,             // stem extent across the bridge (z), each side ±span/2
+    height: 14,           // from stream bed to top of abutment
+    pocketW: 2.0,         // beam pocket width across the bridge
+    pocketL: 2.75,        // beam pocket depth along the bridge
+    wing: { len: 10, t: 1.75, angleDeg: 32 },
+    approachLen: 66,      // compacted approach fill + gravel road drawn behind each abutment (long enough to park the truck)
+    waterDepth: 2.5,
+  },
+
+  // ── Precast plank deck (ours) ───────────────────────────────────────────
+  plank: {
+    count: 20,               // 20 × 4' = 80' of square deck; the end planks run past the girder ends onto the abutment tops / approach
+    w: 4,                 // width along the bridge
+    l: 16,                // length across the bridge (spans all five girders)
+    t: 10 * IN,           // thickness
+    chamfer: 0.5 * IN,
+    unitWeightPcf: 150,
+    rebar: {
+      label: '#5', dia: 0.625 * IN, plf: 1.043,
+      bottomLongOC: 6 * IN,      // bottom mat, bars parallel with the 16' length
+      bottomTransOC: 12 * IN,    // bottom mat, bars across the 4' width
+      topLongOC: 12 * IN,        // top mat
+      topTransOC: 12 * IN,
+      bottomCover: 2 * IN,       // plank bottom → bottom mat
+      matGap: 3 * IN,            // clear between mats
+      topCover: 2 * IN,          // nominal; whatever is left goes to the top
+      edgeCover: 2 * IN,
+    },
+    pins: { count: 4, dia: 0.75 * IN, proj: 3 * IN, embed: 6 * IN, holeDia: 0.875 * IN, holeDepth: 3.5 * IN },
+    inserts: { label: 'Helicoil insert', dia: 1.0 * IN, depth: 1.5 * IN },
+    sleeves: { label: 'PVC channel', od: 2.375 * IN, id: 2.047 * IN },  // 2" sch 40 PVC pipe cast through the plank
+  },
+  holddown: {
+    layout: 'both',        // 'both' = a tab each side of every girder flange · 'alternate' = one per girder, alternating sides
+    outerGirder: 'inner',  // outer girders: 'inner' lip only (keeps the outer lip clear of the curb sleeves) · 'both'
+    tab: { w: 6 * IN, l: 12 * IN, t: 0.75 * IN, underFlange: 4 * IN, holeFromEnd: 2.5 * IN, standoffOD: 1.75 * IN },
+    bolt: { dia: 0.75 * IN, len: 3.5 * IN, headH: 0.5 * IN, headAF: 1.125 * IN, washerOD: 1.5 * IN, washerT: 0.125 * IN },
+  },
+  curb: {
+    len: 2,                // curb segment length along the bridge (2 per plank per side → 80 over 20 planks)
+    w: 12 * IN, h: 10 * IN,
+    haunch: 1 * IN,        // 45° chamfer on the two top edges (equal legs) so the curb pops out of the form
+    setback: 0,            // outer face set in from the plank edge
+    dowel: { label: '#6 dowel', dia: 0.75 * IN, count: 2, inset: 4 * IN, endInset: 6 * IN, embed: 8 * IN, projBelowPlank: 2.5 * IN },
+    washer: { od: 3 * IN, t: 0.25 * IN },
+    weldColor: 0xff7a1a,
+  },
+  endPlanks: {
+    enabled: false,        // true → build the optional trapezoidal skew end planks (and the toggle, chapter and quantities for them)
+    mode: 'precast',       // when enabled: 'precast' (ours) · 'cip' (cast-in-place by others) · 'none'
+    minLength: 2,          // shortest edge of the skew plank
+  },
+  road: { clearWidth: 14 + 8 / 12 },
+
+  view: {
+    steel: 0x5b6e85, galv: 0xb6bcc5, concrete: 0xd0ccc3, curb: 0xc6c1b7, oldConcrete: 0x9f9b95,
+    rebarBottom: 0x3d4249, rebarTop: 0x6b5a4e, brass: 0xc79a3c, gravel: 0xbfb49d, road: 0xa9a396,
+    ground: 0xdde3ea, water: 0x8ab7d9, bg: 0xeef2f6,
+  },
+  timeline: {
+    plankStep: 1.15, curbStep: 0.09,
+    // Auto-camera zoom per chapter: 1 = as authored, 1.3 = 30 % closer, 0.8 = farther. The dock's 🔍 stepper
+    // adjusts these live (remembered in the browser); copy the values you like back here.
+    zoom: { site: 0.7, steel: 0.7, inside: 0.7, planks: 0.7, holddowns: 0.7, curbs: 0.7, ends: 0.7, done: 0.7 },
+    zoomVersion: 2,        // bump when the defaults above change so browsers drop their remembered overrides
+  },
+};
+
+// ============================================================
+// DERIVED LAYOUT
+// ============================================================
+const G = CONFIG.girder, D = CONFIG.diaphragm, B = CONFIG.bearing, A = CONFIG.abutment;
+const P = CONFIG.plank, R = P.rebar, H = CONFIG.holddown, C = CONFIG.curb, E = CONFIG.endPlanks;
+const tanSkew = G.staggerPerBeam / G.spacing;
+const skewDeg = Math.atan(tanSkew) * 180 / Math.PI;
+const girderZ = k => (k - (G.count - 1) / 2) * G.spacing;
+const girderOff = k => girderZ(k) * tanSkew;                   // x shift of girder k (parallelogram in plan)
+const girderRange = k => [-G.length / 2 + girderOff(k), G.length / 2 + girderOff(k)];
+const deckHalfL = P.count * P.w / 2;                            // 30' for 15 × 4'
+const plankX = i => -deckHalfL + (i + 0.5) * P.w;
+const halfW = P.l / 2;
+const pocketDepth = G.d + B.stubH + B.plate.t + B.groutT;       // seat elevation below top of steel
+const seatY = -pocketDepth;
+const endExt = halfW * tanSkew + E.minLength;                   // skew plank: inboard edge → deck end at z = 0
+const deckEndX = deckHalfL + endExt;                            // deck end line at z = 0 (± with skew)
+const curbLen = C.len;
+const curbsPerPlankSide = Math.max(1, Math.round(P.w / curbLen));
+C.count = 2 * P.count * curbsPerPlankSide;                       // derived total over the standard planks
+const diaphragmX = D.linesFromEnd.map(l => girderRange(0)[0] + l); // absolute x of each diaphragm line
+const boltZ = (k, s) => girderZ(k) + s * (G.bf / 2 - H.tab.underFlange + H.tab.l - H.tab.holeFromEnd);
+const tabCenterZ = (k, s) => girderZ(k) + s * (G.bf / 2 - H.tab.underFlange + H.tab.l / 2);
+
+// rebar levels, measured from the plank bottom (main bars outermost in both mats)
+const r = R.dia / 2;
+const yBotLong = R.bottomCover + r;
+const yBotTrans = yBotLong + 2 * r;
+const yTopTrans = yBotTrans + r + R.matGap + r;
+const yTopLong = yTopTrans + 2 * r;
+const topCoverActual = P.t - (yTopLong + r);
+
+const fmtFtIn = ft => {
+  const sign = ft < 0 ? '-' : '';
+  ft = Math.abs(ft);
+  let f = Math.floor(ft + 1e-9); let i = Math.round((ft - f) * 12 * 16) / 16;
+  if (i >= 12) { f += 1; i -= 12; }
+  const whole = Math.floor(i), sx = Math.round((i - whole) * 16);
+  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+  const d = sx ? gcd(sx, 16) : 1;
+  const glyph = { '1/2': '½', '1/4': '¼', '3/4': '¾', '1/8': '⅛', '3/8': '⅜', '5/8': '⅝', '7/8': '⅞' };
+  const fr = sx ? (glyph[`${sx / d}/${16 / d}`] || `${sx / d}⁄${16 / d}`) : '';
+  const inStr = (whole || !fr ? whole : '') + fr;
+  return f ? `${sign}${f}′-${inStr}″` : `${sign}${inStr}″`;
+};
+const fmtIn = ft => { const i = ft * 12; const s = Math.abs(i - Math.round(i)) < 1e-6 ? String(Math.round(i)) : (Math.round(i * 100) / 100).toString(); return s + '″'; };
+const fmtN = (n, d = 0) => n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+
+// ============================================================
+// RENDERER · SCENE · CAMERA
+// ============================================================
+const isMobile = matchMedia('(max-width: 820px)').matches || matchMedia('(pointer: coarse)').matches;
+const app = document.getElementById('app');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
+catch (err) { window.showLoadError && window.showLoadError('This browser could not start WebGL, which the 3D scene needs. Try Chrome, Safari or Edge with hardware acceleration on.'); throw err; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;          // the shadow pass is re-run only when something moves (see invalidate())
+renderer.shadowMap.needsUpdate = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CONFIG.view.bg);
+function buildEnv() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  pmrem.dispose();
+}
+buildEnv();
+renderer.domElement.addEventListener('webglcontextrestored', () => { buildEnv(); renderer.shadowMap.needsUpdate = true; invalidate(); });
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.2, 1200);
+camera.position.set(-68, 28, 58);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, -2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 1.5;
+controls.maxDistance = 420;
+controls.maxPolarAngle = Math.PI * 0.92;   // allow looking up from under the deck
+controls.update();
+
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(-38, 70, 34);
+sun.castShadow = true;
+sun.shadow.mapSize.set(isMobile ? 1024 : 3072, isMobile ? 1024 : 3072);
+sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 42; sun.shadow.camera.bottom = -42;
+sun.shadow.camera.near = 10; sun.shadow.camera.far = 220;
+sun.shadow.bias = -0.00035;
+sun.shadow.normalBias = 0.03;
+scene.add(sun);
+const hemi = new THREE.HemisphereLight(0xdfe9f5, 0xb7ad9a, 0.55);
+scene.add(hemi);
+const fill = new THREE.DirectionalLight(0xcfe0f5, 0.5);
+fill.position.set(50, 18, -60);
+scene.add(fill);
+
+// ============================================================
+// MATERIALS
+// ============================================================
+const V = CONFIG.view;
+const std = (color, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.9, metalness: 0 }, extra));
+const M = {
+  concrete: std(V.concrete, { roughness: 0.93 }),
+  curb: std(V.curb, { roughness: 0.93 }),
+  oldConcrete: std(V.oldConcrete, { roughness: 0.96, side: THREE.DoubleSide }),
+  steel: std(V.steel, { roughness: 0.5, metalness: 0.4 }),
+  galv: std(V.galv, { roughness: 0.32, metalness: 0.85 }),
+  dark: std(0x2c3138, { roughness: 0.55, metalness: 0.6, side: THREE.DoubleSide }),
+  rebarBottom: std(V.rebarBottom, { roughness: 0.65, metalness: 0.5 }),
+  rebarTop: std(V.rebarTop, { roughness: 0.65, metalness: 0.5 }),
+  brass: std(V.brass, { roughness: 0.35, metalness: 0.85 }),
+  pvc: std(0xe9e7e1, { roughness: 0.55, metalness: 0, side: THREE.DoubleSide }),
+  gravel: std(V.gravel, { roughness: 1, side: THREE.DoubleSide }),
+  road: std(V.road, { roughness: 1, side: THREE.DoubleSide }),
+  ground: std(V.ground, { roughness: 1 }),
+  water: std(V.water, { transparent: true, opacity: 0.62, roughness: 0.15, metalness: 0.05 }),
+  cip: std(0xb9c6d6, { transparent: true, opacity: 0.42, roughness: 0.9, side: THREE.DoubleSide, depthWrite: false }),
+  ghost: std(0x94a3b8, { transparent: true, opacity: 0.16, depthWrite: false }),
+  edge: new THREE.LineBasicMaterial({ color: 0x2b3138, transparent: true, opacity: 0.28 }),
+  truckCab: std(0x2f5d3a, { roughness: 0.5, metalness: 0.2 }),
+  truckBody: std(0x3b4048, { roughness: 0.7, metalness: 0.3 }),
+  log: std(0x8b6a48, { roughness: 0.95 }),
+  tire: std(0x1f2226, { roughness: 0.95 }),
+};
+const concreteMats = [M.concrete, M.curb];
+
+// ============================================================
+// GEOMETRY HELPERS (all return geometry already placed in local coordinates)
+// ============================================================
+const boxG = (w, h, d, x = 0, y = 0, z = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g; };
+const cylG = (rad, len, axis, x = 0, y = 0, z = 0, seg = 12, open = false) => {
+  const g = new THREE.CylinderGeometry(rad, rad, len, seg, 1, open);
+  if (axis === 'x') g.rotateZ(Math.PI / 2); else if (axis === 'z') g.rotateX(Math.PI / 2);
+  g.translate(x, y, z); return g;
+};
+const hexG = (acrossFlats, h, x = 0, y = 0, z = 0) => { const g = new THREE.CylinderGeometry(acrossFlats / Math.sqrt(3), acrossFlats / Math.sqrt(3), h, 6); g.translate(x, y, z); return g; };
+const hexGx = (acrossFlats, h, x = 0, y = 0, z = 0) => { const g = new THREE.CylinderGeometry(acrossFlats / Math.sqrt(3), acrossFlats / Math.sqrt(3), h, 6); g.rotateZ(Math.PI / 2); g.translate(x, y, z); return g; };
+const torusG = (rad, tube, x = 0, y = 0, z = 0) => { const g = new THREE.TorusGeometry(rad, tube, 8, 20); g.rotateX(Math.PI / 2); g.translate(x, y, z); return g; };
+const merge = geos => { const list = geos.filter(Boolean); return list.length ? mergeGeometries(list, false) : new THREE.BufferGeometry(); };
+// Vertical prism from a plan polygon [[x,z], …] between y0 and y0+h.
+const prismG = (pts, y0, h) => {
+  let area = 0;
+  for (let i = 0; i < pts.length; i++) { const [x1, z1] = pts[i], [x2, z2] = pts[(i + 1) % pts.length]; area += x1 * -z2 - x2 * -z1; }
+  const ordered = area < 0 ? pts.slice().reverse() : pts;
+  const shape = new THREE.Shape(ordered.map(([x, z]) => new THREE.Vector2(x, -z)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2); g.translate(0, y0, 0);
+  return g;
+};
+const mesh = (geo, mat, opts = {}) => {
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = opts.cast !== false; m.receiveShadow = opts.receive !== false;
+  if (opts.hover) m.userData.hover = opts.hover;
+  return m;
+};
+
+// ============================================================
+// REGISTRIES — parts (for hover / select / isolate), layers, animation
+// ============================================================
+const parts = [];        // { id, kind, label, sub, group, lines[], features[], viewDir, ghosts(), index }
+const layers = {};       // name → [Object3D]
+const anim = [];         // animated entities
+const addLayer = (name, obj) => { (layers[name] ||= []).push(obj); obj.userData.layer = name; };
+const registerPart = p => { p.id = parts.length; parts.push(p); if (p.group) p.group.traverse(o => { if (o.isMesh) o.userData.part = p; }); return p; };
+function track(obj, ex = { x: 0, y: 0, z: 0 }) {
+  const e = { obj, home: { x: obj.position.x, y: obj.position.y, z: obj.position.z }, a: { dx: 0, dy: 0, dz: 0, ry: 0, v: 1 }, ex };
+  anim.push(e); obj.userData.anim = e; return e;
+}
+// Repeated hardware (tabs, bolts, curbs, dowels, washers, welds) is drawn with InstancedMesh: one draw call
+// per family. Each instance is an "InstRec" that carries the same home/a/ex animation state as a mesh entity.
+const families = [];
+class Family {
+  constructor(geo, mat, count, layer, opts = {}) {
+    this.geo = geo; this.recs = []; this.layer = layer;
+    geo.computeBoundingBox();
+    const m = new THREE.InstancedMesh(geo, mat, Math.max(1, count));
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    m.castShadow = opts.cast !== false; m.receiveShadow = opts.receive !== false; m.frustumCulled = false;
+    m.userData.family = this; m.userData.layer = layer;
+    for (let i = 0; i < m.count; i++) m.setColorAt(i, WHITE);
+    m.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    this.mesh = m; families.push(this);
+  }
+  add(rec) {
+    rec.fam = this; rec.id = this.recs.length; rec.isInst = true;
+    rec.a = { dx: 0, dy: 0, dz: 0, ry: 0, s: 1, c: 0, v: 1 }; rec.ex = rec.ex || { x: 0, y: 0, z: 0 }; rec.ryBase = rec.ryBase || 0; rec.hidden = false;
+    this.recs.push(rec); anim.push(rec); return rec;
+  }
+}
+const WHITE = new THREE.Color(1, 1, 1);
+const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color(), _y = new THREE.Vector3(0, 1, 0);
+let explode = 0;
+function instMatrix(e, out) {
+  _p.set(e.home.x + e.a.dx + explode * e.ex.x, e.home.y + e.a.dy + explode * e.ex.y, e.home.z + e.a.dz + explode * e.ex.z);
+  _q.setFromAxisAngle(_y, e.ryBase + e.a.ry);
+  const s = (e.hidden || e.a.v < 0.5) ? 0 : e.a.s; _s.set(s, s, s);
+  return out.compose(_p, _q, _s);
+}
+function applyAnim() {
+  for (const e of anim) {
+    if (e.isInst) { e.fam.mesh.setMatrixAt(e.id, instMatrix(e, _m)); if (e.fam.colorFn) { e.fam.mesh.setColorAt(e.id, e.fam.colorFn(e, _c)); } continue; }
+    e.obj.position.set(e.home.x + e.a.dx + explode * e.ex.x, e.home.y + e.a.dy + explode * e.ex.y, e.home.z + e.a.dz + explode * e.ex.z);
+    if (e.a.ry || e.obj.rotation.y) e.obj.rotation.y = e.a.ry;
+    e.obj.visible = e.obj.userData.vis !== false && e.a.v >= 0.5;     // parts stay invisible until their chapter reveals them
+  }
+  for (const f of families) { f.mesh.instanceMatrix.needsUpdate = true; if (f.colorFn) f.mesh.instanceColor.needsUpdate = true; }
+  renderer.shadowMap.needsUpdate = true;
+  invalidate();
+}
+let needsRender = true;
+const invalidate = () => { needsRender = true; };
+
+const world = new THREE.Group();
+scene.add(world);
+
+// ============================================================
+// SITE — ground, stream, existing abutments (skewed), approach fill
+// ============================================================
+const site = new THREE.Group(); world.add(site);
+{
+  const ground = mesh(new THREE.PlaneGeometry(600, 600), M.ground, { cast: false });
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -A.height - 0.02;
+  site.add(ground);
+  const grid = new THREE.GridHelper(400, 80, 0xb7c0cb, 0xcfd6de);
+  grid.position.y = -A.height - 0.01; grid.material.transparent = true; grid.material.opacity = 0.45;
+  site.add(grid);
+  const water = mesh(boxG(2 * (A.faceX - (A.span / 2) * tanSkew) - 1, A.waterDepth, 140, 0, -A.height + A.waterDepth / 2, 0), M.water, { cast: false, hover: { title: 'Russell Stream', sub: 'existing crossing' } });
+  site.add(water);
+}
+const abutments = [];
+for (const s of [-1, 1]) {
+  const g = new THREE.Group(); site.add(g);
+  const xf = z => s * A.faceX + z * tanSkew;             // stream face line
+  const zA = -A.span / 2, zB = A.span / 2;
+  const quad = (a, b, za, zb) => [[xf(za) + s * a, za], [xf(za) + s * b, za], [xf(zb) + s * b, zb], [xf(zb) + s * a, zb]];
+  const geos = [];
+  geos.push(prismG(quad(0, A.thickness, zA, zB), -A.height, A.height - pocketDepth));      // base up to the seat
+  geos.push(prismG(quad(A.pocketL, A.thickness, zA, zB), seatY, pocketDepth));            // backwall behind the pockets
+  const cuts = [zA];
+  for (let k = 0; k < G.count; k++) cuts.push(girderZ(k) - A.pocketW / 2, girderZ(k) + A.pocketW / 2);
+  cuts.push(zB);
+  for (let i = 0; i < cuts.length; i += 2) if (cuts[i + 1] - cuts[i] > 0.05) geos.push(prismG(quad(0, A.pocketL, cuts[i], cuts[i + 1]), seatY, pocketDepth));
+  const stem = mesh(merge(geos), M.oldConcrete, { hover: { title: `Existing ${s < 0 ? 'east' : 'west'} abutment`, sub: `kept · skewed ${skewDeg.toFixed(1)}° · beam pockets ${fmtFtIn(pocketDepth)} deep` } });
+  g.add(stem);
+  // wing walls
+  for (const sz of [-1, 1]) {
+    const zEnd = sz * A.span / 2;
+    const ang = A.wing.angleDeg * Math.PI / 180;
+    const dir = new THREE.Vector3(s * Math.cos(ang), 0, sz * Math.sin(ang));
+    const pivot = new THREE.Vector3(xf(zEnd) + s * A.thickness / 2, 0, zEnd);
+    const wing = mesh(boxG(A.wing.len, A.height, A.wing.t), M.oldConcrete, { hover: { title: 'Existing wing wall', sub: 'kept' } });
+    wing.position.copy(pivot).addScaledVector(dir, A.wing.len / 2 - A.wing.t / 2);
+    wing.position.y = -A.height / 2;
+    wing.rotation.y = Math.atan2(-dir.z, dir.x);
+    g.add(wing);
+  }
+  // approach fill + gravel road surface at deck level
+  const fillZ = A.span / 2 + 1;
+  const fillPts = [[xf(-fillZ) + s * A.thickness, -fillZ], [xf(-fillZ) + s * (A.thickness + A.approachLen), -fillZ], [xf(fillZ) + s * (A.thickness + A.approachLen), fillZ], [xf(fillZ) + s * A.thickness, fillZ]];
+  g.add(mesh(prismG(fillPts, -A.height, A.height), M.gravel, { cast: false, hover: { title: 'Approach fill', sub: 'compacted gravel · by others' } }));
+  const xe = z => E.enabled ? s * deckEndX + z * tanSkew : s * deckHalfL;   // deck end line (behind which the road is gravel)
+  const roadPts = [[xe(-halfW), -halfW], [xf(-halfW) + s * (A.thickness + A.approachLen), -halfW], [xf(halfW) + s * (A.thickness + A.approachLen), halfW], [xe(halfW), halfW]];
+  g.add(mesh(prismG(roadPts, 0, P.t), M.road, { cast: false, hover: { title: 'Approach road', sub: 'gravel at deck level' } }));
+  addLayer('abutments', g);
+  abutments.push(g);
+  registerPart({ kind: 'abutment', label: `Existing ${s < 0 ? 'east' : 'west'} abutment`, sub: 'kept · new steel bears in the existing pockets', group: g, cat: 'abutments',
+    lines: [`Skew ≈ <b>${skewDeg.toFixed(1)}°</b> (girders step ${fmtFtIn(G.staggerPerBeam)} per ${fmtFtIn(G.spacing)})`, `T.O. abutment = T.O. steel = <b>EL 100′-0″</b>`, `Beam pockets <b>${fmtFtIn(pocketDepth)}</b> deep · 5 ksi non-shrink grout`, `Anchor rods 1″Ø in Hilti HIT-HY 200 epoxy`],
+    viewDir: new THREE.Vector3(-s * 1.2, 0.55, 1), pad: 1.3 });
+}
+
+// bearings: grout pad + (2) anchor rods + nuts at every girder end (part of the site; the stubs + base plates come with the girder)
+const bearings = new THREE.Group(); site.add(bearings);
+for (let k = 0; k < G.count; k++) for (const s of [-1, 1]) {
+  const xb = s * G.bearingCC / 2 + girderOff(k), z = girderZ(k);
+  const g = new THREE.Group(); g.position.set(xb, seatY, z); bearings.add(g);
+  const grout = mesh(boxG(B.plate.l + 2 * IN, B.groutT - 0.002, B.plate.w + 2 * IN, 0, (B.groutT - 0.002) / 2, 0), std(0xb9b6ae, { roughness: 1 }), { hover: { title: 'Non-shrink grout pad', sub: '5 ksi · 2″ min' } });
+  g.add(grout);
+  const rods = [];
+  for (const sz of [-1, 1]) {
+    const z = sz * B.anchorSpacing / 2;
+    const h = B.groutT + B.plate.t + B.anchorProj;
+    rods.push(cylG(B.anchorDia / 2, h + 8 * IN, 'y', 0, h / 2 - 4 * IN, z, 10));
+    rods.push(hexG(1.625 * IN, 0.9 * IN, 0, B.groutT + B.plate.t + 0.45 * IN, z));
+    rods.push(cylG(1.1 * IN, 0.15 * IN, 'y', 0, B.groutT + B.plate.t + 0.08 * IN, z, 12));
+  }
+  g.add(mesh(merge(rods), M.dark, { hover: { title: '1″Ø anchor rods', sub: '(2) per base plate · heavy hex nuts' } }));
+  addLayer('bearings', g);
+  registerPart({ kind: 'bearing', label: `Bearing · G${k + 1} ${s < 0 ? 'east' : 'west'}`, sub: 'thermal-expansion bearing in the existing pocket', group: g, cat: 'bearings',
+    lines: [`Short <b>${B.stub}</b> stub + <b>${fmtFtIn(B.plate.w)} × ${fmtFtIn(B.plate.l)} × ${fmtIn(B.plate.t)}</b> plate welded under the girder end`, `${s > 0 ? 'Expansion end: slotted holes over Part #3 + a 12½″ sq bronze slide plate (Part #4)' : 'Fixed end: standard holes, bears on 2″ of 5 ksi non-shrink grout'}`, `(2) <b>1″Ø</b> threaded rods 18″ o.c. in Hilti HIT-HY 200 epoxy`, `Pocket floor <b>${fmtFtIn(-seatY)}</b> below top of steel (B.O. plate EL 96′-2⅜″)`],
+    viewDir: new THREE.Vector3(-s, 0.35, 1.2), pad: 2.2, ghosts: () => [girders[k].mesh] });
+}
+
+// ============================================================
+// NEW STEEL — girders (with stubs + base plates), diaphragms
+// ============================================================
+const steel = new THREE.Group(); world.add(steel);
+const girders = [];
+for (let k = 0; k < G.count; k++) {
+  const g = new THREE.Group(); g.position.set(girderOff(k), 0, girderZ(k)); steel.add(g);
+  const L = G.length, geos = [];
+  geos.push(boxG(L, G.tf, G.bf, 0, -G.tf / 2, 0));
+  geos.push(boxG(L, G.tf, G.bf, 0, -G.d + G.tf / 2, 0));
+  geos.push(boxG(L, G.d - 2 * G.tf, G.tw, 0, -G.d / 2, 0));
+  // connection plates for the diaphragms (perpendicular to the web, 5 bolt holes)
+  for (const xd of diaphragmX) {
+    const xl = xd - girderOff(k);
+    for (const sz of [-1, 1]) {
+      if ((k === 0 && sz < 0) || (k === G.count - 1 && sz > 0)) continue;
+      geos.push(boxG(D.plate.t, D.plate.h, D.plate.w, xl - D.plate.t / 2, -G.d / 2, sz * (G.tw / 2 + D.plate.w / 2)));
+    }
+  }
+  // W12×65 stubs + base plates at each bearing
+  for (const s of [-1, 1]) {
+    const xb = s * G.bearingCC / 2, yb = -G.d - B.stubH;
+    geos.push(boxG(B.stubTf, B.stubH, B.stubBf, xb - B.stubD / 2 + B.stubTf / 2, yb + B.stubH / 2, 0));
+    geos.push(boxG(B.stubTf, B.stubH, B.stubBf, xb + B.stubD / 2 - B.stubTf / 2, yb + B.stubH / 2, 0));
+    geos.push(boxG(B.stubD - 2 * B.stubTf, B.stubH, B.stubTw, xb, yb + B.stubH / 2, 0));
+    geos.push(boxG(B.plate.l, B.plate.t, B.plate.w, xb, yb - B.plate.t / 2, 0));
+    // end plate on the girder
+    geos.push(boxG(0.5 * IN, G.d, G.bf, s * (L / 2 - 0.25 * IN), -G.d / 2, 0));
+  }
+  const m = mesh(merge(geos), M.steel, { hover: { title: `Girder G${k + 1} · ${G.section}`, sub: `${fmtFtIn(G.length)} long · ${fmtN(G.weightPlf * G.length)} lb · Part #${5 + k}` } });
+  g.add(m);
+  addLayer('girders', g);
+  girders.push({ group: g, mesh: m, k });
+  track(g);
+  registerPart({ kind: 'girder', label: `Girder G${k + 1} · ${G.section}`, sub: `Part #${5 + k} on the engineered plan`, group: g, cat: 'girders', index: k,
+    lines: [`<b>${G.section}</b> · d ${fmtIn(G.d)} · flange ${fmtIn(G.bf)} × ${fmtIn(G.tf)}`, `Length <b>${fmtFtIn(G.length)}</b> · bearings ${fmtFtIn(G.bearingCC)} c/c`, `Weight <b>${fmtN(G.weightPlf * G.length)} lb</b> (${G.weightPlf} plf)`, `Spacing <b>${fmtFtIn(G.spacing)}</b> o.c. · shifted ${fmtFtIn(girderOff(k))} for the skew`, `${G.paint}`],
+    viewDir: new THREE.Vector3(-1, 0.45, 1), pad: 1.15 });
+}
+
+const diaphragms = [];
+diaphragmX.forEach((xd, li) => {
+  for (let k = 0; k < G.count - 1; k++) {
+    const g = new THREE.Group(); g.position.set(xd, -G.d / 2, (girderZ(k) + girderZ(k + 1)) / 2); steel.add(g);
+    const len = D.length, geos = [];
+    geos.push(boxG(D.tw, D.d, len, D.tw / 2, 0, 0));
+    for (const sy of [-1, 1]) geos.push(boxG(D.bf, D.tf, len, D.bf / 2, sy * (D.d / 2 - D.tf / 2), 0));
+    const ch = mesh(merge(geos), M.steel, { hover: { title: `Diaphragm · ${D.section}`, sub: `${fmtFtIn(D.length)} long · line ${li + 1} of ${diaphragmX.length}` } });
+    g.add(ch);
+    const bolts = [];
+    for (const sz of [-1, 1]) for (let j = 0; j < D.boltsPerEnd; j++) {
+      const y = (j - (D.boltsPerEnd - 1) / 2) * D.boltSpacing, z = sz * (len / 2 - 2 * IN);
+      bolts.push(cylG(D.boltDia / 2, D.tw + D.plate.t + 1.4 * IN, 'x', (D.tw - D.plate.t) / 2, y, z, 8));
+      bolts.push(hexGx(1.25 * IN, 0.5 * IN, D.tw + 0.25 * IN, y, z));
+      bolts.push(hexGx(1.25 * IN, 0.6 * IN, -D.plate.t - 0.3 * IN, y, z));
+    }
+    const bg = merge(bolts);
+    const boltMesh = mesh(bg, M.dark, { cast: false, hover: { title: '¾″Ø A325 bolts', sub: `(${D.boltsPerEnd}) each end · Part #11` } });
+    g.add(boltMesh);
+    addLayer('diaphragms', g);
+    diaphragms.push(g);
+    track(g);
+    registerPart({ kind: 'diaphragm', label: `Diaphragm · line ${li + 1}, bay ${k + 1}`, sub: `${D.section} between G${k + 1} and G${k + 2}`, group: g, cat: 'diaphragms',
+      lines: [`<b>${D.section}</b> · ${fmtFtIn(D.length)} long (Part #10)`, `(${D.boltsPerEnd}) <b>¾″Ø A325</b> bolts each end into plates welded to the girder webs`, `Lines at <b>15′-6″</b> o.c. (${diaphragmX.length} lines · ${diaphragmX.length * (G.count - 1)} total)`, `Weight ${fmtN(D.weightPlf * D.length)} lb each`],
+      viewDir: new THREE.Vector3(-1, 0.4, 0.9), pad: 1.8, ghosts: () => [girders[k].mesh, girders[k + 1].mesh] });
+  }
+});
+
+// ============================================================
+// PRECAST PLANKS — concrete, two rebar mats, pins/holes, PVC sleeves, inserts
+// ============================================================
+// A plank's plan region is  z ∈ [-l/2, l/2],  x ∈ [xa(z), xb(z)]  with xa, xb
+// linear in z. Standard planks are rectangles; skew end planks are trapezoids
+// whose outboard edge follows the abutment skew.
+const deck = new THREE.Group(); deck.position.y = 0.003; world.add(deck);          // 1/32" bearing seat keeps plank bottoms off the flange faces
+const hardware = new THREE.Group(); world.add(hardware);
+const curbsGroup = new THREE.Group(); curbsGroup.position.y = 0.006; world.add(curbsGroup);
+const planks = [], skewPlanks = [], curbs = [], holddowns = [];
+
+const region = (xa0, ka, xb0, kb) => ({ xa: z => xa0 + ka * z, xb: z => xb0 + kb * z, xa0, ka, xb0, kb });
+const positionsSym = (width, oc, cover) => { const n = Math.floor((width - 2 * cover) / oc + 1e-6) + 1; const span = (n - 1) * oc; return Array.from({ length: n }, (_, i) => -span / 2 + i * oc); };
+const positionsFrom = (x0, x1, oc) => { const out = []; const dir = x1 >= x0 ? 1 : -1; for (let x = x0; dir * (x1 - x) >= -1e-6; x += dir * oc) out.push(x); return out; };
+
+function plankRebar(reg, spec) {
+  const c = R.edgeCover, zLo = -halfW + c, zHi = halfW - c;
+  const barZ = (x, y) => {                     // bar parallel with the 16' length, clipped to the region
+    // need xa(z) + c ≤ x ≤ xb(z) − c
+    let lo = zLo, hi = zHi;
+    const clip = (k, b, sign) => {              // sign*(b + k z) ≥ sign*x  →  solve for z-range
+      if (Math.abs(k) < 1e-9) { if (sign * b < sign * x) return false; return true; }
+      const zc = (x - b) / k;                   // boundary
+      if ((sign > 0 && k > 0) || (sign < 0 && k < 0)) lo = Math.max(lo, zc); else hi = Math.min(hi, zc);
+      return true;
+    };
+    if (!clip(reg.kb, reg.xb0 - c, 1)) return null;   // xb(z) − c ≥ x
+    if (!clip(reg.ka, reg.xa0 + c, -1)) return null;  // xa(z) + c ≤ x
+    if (hi - lo < 0.75) return null;
+    return { geo: cylG(r, hi - lo, 'z', x, y, (lo + hi) / 2, 8), len: hi - lo };
+  };
+  const barX = (z, y) => { const x0 = reg.xa(z) + c, x1 = reg.xb(z) - c; if (x1 - x0 < 0.75) return null; return { geo: cylG(r, x1 - x0, 'x', (x0 + x1) / 2, y, z, 8), len: x1 - x0 }; };
+  const xsLong = spec.xPositions, zs = positionsSym(P.l, R.bottomTransOC, c);
+  const bottom = [], top = [];
+  for (const x of xsLong.bottom) { const b = barZ(x, yBotLong); if (b) bottom.push(b); }
+  for (const z of zs) { const b = barX(z, yBotTrans); if (b) bottom.push(b); }
+  for (const z of positionsSym(P.l, R.topTransOC, c)) { const b = barX(z, yTopTrans); if (b) top.push(b); }
+  for (const x of xsLong.top) { const b = barZ(x, yTopLong); if (b) top.push(b); }
+  const sum = list => list.reduce((a, b) => a + b.len, 0);
+  return { bottomGeo: merge(bottom.map(b => b.geo)), topGeo: merge(top.map(b => b.geo)), bottomCount: bottom.length, topCount: top.length, bottomLen: sum(bottom), topLen: sum(top) };
+}
+
+function holddownSides(i, k) {
+  const outer = k === 0 ? -1 : (k === G.count - 1 ? 1 : 0);        // which lip of this girder faces the deck edge
+  if (H.layout === 'alternate') { const s = ((i + k) % 2) ? 1 : -1; return (outer && H.outerGirder === 'inner' && s === outer) ? [-outer] : [s]; }
+  if (outer && H.outerGirder === 'inner') return [-outer];
+  return [-1, 1];
+}
+
+// Where can a tab go under this plank on girder k? Returns local x or null.
+function tabX(worldX, reg, k, preferredLocal) {
+  const [g0, g1] = girderRange(k), z = girderZ(k);
+  const lo = Math.max(worldX + reg.xa(z), g0) + H.tab.w / 2 + 1 * IN;
+  const hi = Math.min(worldX + reg.xb(z), g1) - H.tab.w / 2 - 1 * IN;
+  if (hi - lo < 0) return null;
+  return Math.min(hi, Math.max(lo, worldX + preferredLocal)) - worldX;
+}
+
+const stdGeoCache = {};
+function buildPlank(spec) {
+  const { reg, worldX } = spec;
+  const g = new THREE.Group(); g.position.set(worldX, 0, 0); deck.add(g);
+  const isSkew = spec.kind === 'skew';
+  const cache = isSkew ? {} : stdGeoCache;          // standard planks share one set of geometries
+  // concrete
+  let concreteGeo;
+  if (!isSkew) { concreteGeo = cache.concrete ||= (() => { const c = new RoundedBoxGeometry(P.w, P.t, P.l, 2, P.chamfer); c.translate(0, P.t / 2, 0); return c; })(); }
+  else concreteGeo = prismG([[reg.xa(-halfW), -halfW], [reg.xb(-halfW), -halfW], [reg.xb(halfW), halfW], [reg.xa(halfW), halfW]], 0, P.t);
+  const area = isSkew ? P.l * ((reg.xb(-halfW) - reg.xa(-halfW)) + (reg.xb(halfW) - reg.xa(halfW))) / 2 : P.w * P.l;
+  const volume = area * P.t;
+  const concrete = mesh(concreteGeo, M.concrete, { hover: { title: spec.label, sub: spec.hoverSub } });
+  concrete.userData.concrete = true;
+  g.add(concrete);
+  const edgeGeo = isSkew ? new THREE.EdgesGeometry(concreteGeo, 30) : (cache.edges ||= new THREE.EdgesGeometry(boxG(P.w, P.t, P.l, 0, P.t / 2, 0)));
+  const edges = new THREE.LineSegments(edgeGeo, M.edge);
+  edges.userData.edge = true;
+  g.add(edges);
+  // rebar
+  const xsLong = isSkew
+    ? { bottom: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.bottomLongOC),
+        top: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.topLongOC) }
+    // top-mat long bars sit half a spacing in from the edge so they clear the curb-sleeve lines at ±6" / ±18"
+    : { bottom: positionsSym(P.w, R.bottomLongOC, R.edgeCover), top: positionsSym(P.w, R.topLongOC, R.edgeCover + R.topLongOC / 2) };
+  const rb = isSkew ? plankRebar(reg, { xPositions: xsLong }) : (cache.rebar ||= plankRebar(reg, { xPositions: xsLong }));
+  const botMesh = mesh(rb.bottomGeo, M.rebarBottom, { cast: false, hover: { title: 'Bottom rebar mat', sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. with the length · ${R.label} @ ${fmtIn(R.bottomTransOC)} o.c. across · ${fmtIn(R.bottomCover)} bottom cover` } });
+  const topMesh = mesh(rb.topGeo, M.rebarTop, { cast: false, hover: { title: 'Top rebar mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} o.c. both ways · ${fmtIn(R.matGap)} clear above the bottom mat · ${fmtIn(topCoverActual)} top cover` } });
+  botMesh.userData.rebar = 'bottom'; topMesh.userData.rebar = 'top';
+  g.add(botMesh, topMesh);
+  addLayer('rebar', botMesh); addLayer('rebar', topMesh);
+  // pins (male, +X face) and holes (female, −X face)
+  const pinZ = Array.from({ length: P.pins.count }, (_, j) => (j - (P.pins.count - 1) / 2) * (P.l / P.pins.count));
+  const pinMat = M.galv.clone(); pinMat.emissive = new THREE.Color(0xffa62b); pinMat.emissiveIntensity = 0; pinMat.toneMapped = false;
+  let pinsMesh = null, holesMesh = null;
+  if (spec.pinsPlus) {
+    const xf = isSkew ? reg.xb0 : P.w / 2;
+    const pg = isSkew ? null : cache.pins;
+    pinsMesh = mesh(pg || (cache.pins = merge(pinZ.map(z => cylG(P.pins.dia / 2, P.pins.proj + P.pins.embed, 'x', xf + (P.pins.proj - P.pins.embed) / 2, P.t / 2, z, 12)))), pinMat, { cast: false, hover: { title: `¾″Ø pins (${P.pins.count})`, sub: `project ${fmtIn(P.pins.proj)} · embedded ${fmtIn(P.pins.embed)} · engage the next plank's holes` } });
+    g.add(pinsMesh); addLayer('hardware', pinsMesh);
+  }
+  if (spec.holesMinus) {
+    const xf = isSkew ? reg.xa0 : -P.w / 2;
+    const hg = isSkew ? null : cache.holes;
+    holesMesh = mesh(hg || (cache.holes = merge(pinZ.map(z => cylG(P.pins.holeDia / 2, P.pins.holeDepth + 0.003, 'x', xf + P.pins.holeDepth / 2 - 0.0015, P.t / 2, z, 14)))), M.dark, { cast: false, hover: { title: `Pin holes (${P.pins.count})`, sub: `${fmtIn(P.pins.holeDia)}Ø × ${fmtIn(P.pins.holeDepth)} deep · receive the previous plank's pins` } });
+    g.add(holesMesh); addLayer('hardware', holesMesh);
+  }
+  // curb slots → PVC sleeves (2 per curb)
+  const slots = spec.curbSlots;
+  const tubeGeos = [], holeGeos = [], dowelPts = [];
+  for (const sl of slots) for (const sx of [-1, 1]) {
+    const x = sl.x + sx * (curbLen / 2 - C.dowel.endInset), z = sl.side * (halfW - C.setback - C.dowel.inset);
+    dowelPts.push({ x, z, side: sl.side });
+    tubeGeos.push(cylG(P.sleeves.od / 2, P.t + 0.006, 'y', x, P.t / 2, z, 18, true));          // white PVC pipe wall
+    holeGeos.push(cylG(P.sleeves.id / 2, 0.004, 'y', x, P.t + 0.003, z, 18));                   // dark bore, top …
+    holeGeos.push(cylG(P.sleeves.id / 2, 0.004, 'y', x, -0.003, z, 18));                        // … and bottom
+  }
+  const sleeveHover = { title: `${P.sleeves.label} · 2″ sch 40 PVC pipe`, sub: `cast through the plank · curb dowels pass through · ${dowelPts.length} per plank` };
+  const sleeves = mesh(isSkew ? merge(tubeGeos) : (cache.sleeves ||= merge(tubeGeos)), M.pvc, { cast: false, hover: sleeveHover });
+  const sleeveHoles = mesh(isSkew ? merge(holeGeos) : (cache.sleeveHoles ||= merge(holeGeos)), M.dark, { cast: false, hover: sleeveHover });
+  g.add(sleeves, sleeveHoles); addLayer('hardware', sleeves); addLayer('hardware', sleeveHoles);
+  // hold-down positions → helicoil inserts
+  const tabs = [];
+  for (let k = 0; k < G.count; k++) {
+    const x = tabX(worldX, reg, k, spec.tabPreferredLocal);
+    if (x === null) continue;
+    for (const s of holddownSides(spec.index, k)) tabs.push({ x, k, s });
+  }
+  const insertGeos = tabs.map(t => cylG(P.inserts.dia / 2, P.inserts.depth + 0.003, 'y', t.x, P.inserts.depth / 2 - 0.0015, boltZ(t.k, t.s), 12));
+  const inserts = mesh(merge(insertGeos), M.brass, { cast: false, hover: { title: `${P.inserts.label} (${tabs.length})`, sub: `${fmtIn(P.inserts.dia)}Ø × ${fmtIn(P.inserts.depth)} deep · cast in the underside · receives the hold-down bolt` } });
+  g.add(inserts); addLayer('hardware', inserts);
+  addLayer('planks', g);
+
+  const weight = volume * P.unitWeightPcf + (rb.bottomLen + rb.topLen) * R.plf;
+  const rec = { spec, group: g, concrete, botMesh, topMesh, pinsMesh, holesMesh, pinMat, sleeves, sleeveHoles, inserts, tabs, dowelPts, slots, area, volume, weight, rebar: rb, reg, worldX, isSkew };
+  const feat = [];
+  feat.push({ p: [0, P.t, 0], text: spec.label, sub: `${spec.dimText} · ${fmtN(volume / 27, 2)} cy · ~${fmtN(weight / 1000, 1)}k lb` });
+  feat.push({ p: [xsLong.bottom[0] ?? 0, yBotLong, -halfW + 1.2], text: 'Bottom mat', sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} long · @ ${fmtIn(R.bottomTransOC)} trans · ${fmtIn(R.bottomCover)} cover`, left: true });
+  feat.push({ p: [xsLong.top[xsLong.top.length - 1] ?? 0, yTopLong, halfW - 1.2], text: 'Top mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} both ways · ${fmtIn(R.matGap)} clear between mats` });
+  if (pinsMesh) feat.push({ p: [(isSkew ? reg.xb0 : P.w / 2) + P.pins.proj, P.t / 2, pinZ[1]], text: `¾″Ø pins ×${P.pins.count}`, sub: `${fmtIn(P.pins.proj)} projection · click into the next plank` });
+  if (holesMesh) feat.push({ p: [(isSkew ? reg.xa0 : -P.w / 2), P.t / 2, pinZ[2]], text: `Pin holes ×${P.pins.count}`, sub: `${fmtIn(P.pins.holeDia)}Ø · female side`, left: true });
+  if (dowelPts.length) feat.push({ p: [dowelPts[0].x, P.t, dowelPts[0].z], text: `${P.sleeves.label}`, sub: `2″ sleeve for the curb dowel · ${dowelPts.length} per plank`, left: dowelPts[0].z < 0 });
+  if (tabs.length) { const t = tabs[Math.floor(tabs.length / 2)]; feat.push({ p: [t.x, 0, boltZ(t.k, t.s)], text: `${P.inserts.label} ×${tabs.length}`, sub: 'cast-in threaded insert for the hold-down bolt' }); }
+  rec.part = registerPart({ kind: spec.kind, label: spec.label, sub: spec.sub, group: g, cat: 'planks', index: spec.index, features: feat, rec,
+    lines: [`<b>${spec.dimText}</b>`, `Concrete <b>${fmtN(volume / 27, 2)} cy</b> (${fmtN(volume, 1)} cf) · ~<b>${fmtN(weight)} lb</b> pick weight`, `Rebar: bottom mat ${rb.bottomCount} bars · top mat ${rb.topCount} bars · <b>${fmtN(rb.bottomLen + rb.topLen)} lf</b> ${R.label} (${fmtN((rb.bottomLen + rb.topLen) * R.plf)} lb)`, `Covers: ${fmtIn(R.bottomCover)} bottom · ${fmtIn(R.matGap)} between mats · ${fmtIn(topCoverActual)} top`, `${pinsMesh ? `${P.pins.count} pins` : 'no pins'} · ${holesMesh ? `${P.pins.count} holes` : 'no holes'} · ${tabs.length} helicoil inserts · ${dowelPts.length} PVC sleeves`],
+    viewDir: new THREE.Vector3(-1, 0.75, 1.1), pad: 1.25 });
+  track(g, { x: isSkew ? Math.sign(worldX) * 5 : (spec.index - (P.count - 1) / 2) * 0.35, y: 1.6, z: 0 });
+  return rec;
+}
+
+// standard planks
+for (let i = 0; i < P.count; i++) {
+  const reg = region(-P.w / 2, 0, P.w / 2, 0);
+  const slots = [];
+  for (const side of [-1, 1]) for (let j = 0; j < curbsPerPlankSide; j++) slots.push({ x: (j - (curbsPerPlankSide - 1) / 2) * curbLen, side });
+  planks.push(buildPlank({ kind: 'plank', index: i, reg, worldX: plankX(i), pinsPlus: E.enabled || i < P.count - 1, holesMinus: E.enabled || i > 0, curbSlots: slots, tabPreferredLocal: 0,
+    label: `Plank ${i + 1} of ${P.count}`, sub: (!E.enabled && (i === 0 || i === P.count - 1)) ? `end plank · ${i === 0 ? 'no holes on the exposed edge' : 'no pins on the exposed edge'}` : 'standard precast bridge plank', hoverSub: `${fmtFtIn(P.w)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)} · ~${fmtN(Math.round((P.w * P.l * P.t * P.unitWeightPcf + 320) / 100) * 100)} lb`, dimText: `${fmtFtIn(P.w)} wide × ${fmtFtIn(P.l)} long × ${fmtIn(P.t)} thick` }));
+}
+
+// the first plank is the hero of the "inside a plank" beat: own concrete material (fades to x-ray)
+// and rebar mats pivoted at one end so they can draw themselves in
+{
+  const hero = planks[0];
+  hero.concrete.material = M.concrete.clone(); hero.concrete.material.transparent = true; concreteMats.push(hero.concrete.material);
+  for (const m of [hero.botMesh, hero.topMesh]) { m.geometry = m.geometry.clone(); m.geometry.translate(0, 0, halfW); m.position.z = -halfW; }   // clone: the standard planks share one geometry
+}
+
+// skew end planks (trapezoids that carry the deck out to the skewed abutment line)
+const endPlankGroup = new THREE.Group(); deck.add(endPlankGroup);
+const cipWedges = [];
+for (const s of (E.enabled ? [-1, 1] : [])) {
+  const reg = s > 0 ? region(0, 0, endExt, tanSkew) : region(-endExt, tanSkew, 0, 0);
+  const slots = [];
+  for (const side of [-1, 1]) {
+    const zs = side * (halfW - C.setback - C.w), len = reg.xb(zs) - reg.xa(zs), n = Math.floor(len / curbLen + 1e-6);   // measured at the curb's inner face so no curb hangs past the skewed edge
+    for (let j = 0; j < n; j++) slots.push({ x: s * (j * curbLen + curbLen / 2), side });
+  }
+  const lenMin = Math.min(reg.xb(-halfW) - reg.xa(-halfW), reg.xb(halfW) - reg.xa(halfW)), lenMax = Math.max(reg.xb(-halfW) - reg.xa(-halfW), reg.xb(halfW) - reg.xa(halfW));
+  const rec = buildPlank({ kind: 'skew', index: P.count + (s > 0 ? 1 : 0), reg, worldX: s * deckHalfL, pinsPlus: s < 0, holesMinus: s > 0, curbSlots: slots, tabPreferredLocal: s * 1.0,
+    label: `Skew end plank (${s < 0 ? 'east' : 'west'})`, sub: `trapezoid cast to the ${skewDeg.toFixed(1)}° abutment skew`, hoverSub: `${fmtFtIn(lenMin)} → ${fmtFtIn(lenMax)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)}`, dimText: `${fmtFtIn(lenMin)} → ${fmtFtIn(lenMax)} along the bridge × ${fmtFtIn(P.l)} × ${fmtIn(P.t)}` });
+  rec.side = s;
+  endPlankGroup.add(rec.group);
+  skewPlanks.push(rec);
+  // CIP alternative (drawn instead of the precast piece when the mode is 'cip')
+  const wedge = mesh(prismG([[reg.xa(-halfW), -halfW], [reg.xb(-halfW), -halfW], [reg.xb(halfW), halfW], [reg.xa(halfW), halfW]], 0, P.t), M.cip, { cast: false, hover: { title: 'Cast-in-place transition', sub: 'by others · fills the skew to the abutment' } });
+  wedge.position.set(s * deckHalfL, 0, 0);
+  wedge.visible = false;
+  deck.add(wedge); cipWedges.push(wedge);
+}
+addLayer('endplanks', endPlankGroup);
+cipWedges.forEach(w => addLayer('endplanks', w));
+
+// ============================================================
+// HOLD-DOWNS — tab plate with welded stand-off + bolt into the helicoil (instanced)
+// ============================================================
+const tabGeo = (() => {
+  const geos = [boxG(H.tab.w, H.tab.t, H.tab.l, 0, -H.tab.t / 2, 0)];
+  const zHole = H.tab.l / 2 - H.tab.holeFromEnd;      // hole toward the outer end (+z local)
+  geos.push(cylG(H.tab.standoffOD / 2, G.tf - 1 / 16 * IN, 'y', 0, (G.tf - 1 / 16 * IN) / 2, zHole, 14, true));
+  return merge(geos);
+})();
+const boltGeo = (() => {
+  const b = H.bolt, yHead = -G.tf - H.tab.t - b.washerT;
+  return merge([
+    cylG(b.dia / 2, b.len, 'y', 0, yHead + b.len / 2 - b.headH * 0.2, 0, 10),
+    hexG(b.headAF, b.headH, 0, yHead - b.headH / 2, 0),
+    cylG(b.washerOD / 2, b.washerT, 'y', 0, yHead + b.washerT / 2, 0, 14),
+  ]);
+})();
+const allPlanks = [...planks, ...skewPlanks];
+const nTabs = allPlanks.reduce((a, p) => a + p.tabs.length, 0);
+const tabFam = new Family(tabGeo, M.galv, nTabs, 'hardware', { cast: false });
+const boltFam = new Family(boltGeo, M.dark, nTabs, 'hardware', { cast: false });
+hardware.add(tabFam.mesh, boltFam.mesh);
+const tabHover = { title: 'Hold-down tab', sub: `${fmtIn(H.tab.w)} × ${fmtIn(H.tab.l)} × ${fmtIn(H.tab.t)} plate with welded stand-off · hooks the ${G.section} flange` };
+const boltHover = { title: 'Hold-down bolt', sub: `${fmtIn(H.bolt.dia)}Ø × ${fmtIn(H.bolt.len)} · threads into the helicoil insert` };
+for (const rec of allPlanks) {
+  for (const t of rec.tabs) {
+    const zc = tabCenterZ(t.k, t.s), zb = boltZ(t.k, t.s), x = rec.worldX + t.x;
+    const tab = tabFam.add({ home: { x, y: -G.tf - 0.002, z: zc }, ryBase: t.s > 0 ? 0 : Math.PI, ex: { x: 0, y: -1.2, z: 0 }, hover: tabHover, skewDep: rec.isSkew });
+    const bolt = boltFam.add({ home: { x, y: 0, z: zb }, ex: { x: 0, y: -2.4, z: 0 }, hover: boltHover, skewDep: rec.isSkew });
+    const hd = { rec, t, tab, bolt, x, zc, zb };
+    holddowns.push(hd);
+    hd.part = registerPart({ kind: 'holddown', skewDep: rec.isSkew, label: `Hold-down · ${rec.spec.label.replace(' of ' + P.count, '')} · G${t.k + 1} ${t.s > 0 ? 'N' : 'S'}`, sub: 'clamps the plank to the girder flange from below', cat: 'hardware', objs: [tab, bolt],
+      lines: [`Tab <b>${fmtIn(H.tab.w)} × ${fmtIn(H.tab.l)} × ${fmtIn(H.tab.t)}</b> galvanized plate · ${fmtIn(H.tab.underFlange)} reaches under the flange`, `Welded stand-off ring ≈ <b>${fmtIn(G.tf - 1 / 16 * IN)}</b> so the bolt pulls the tab up against the ${fmtIn(G.tf)} flange`, `Bolt <b>${fmtIn(H.bolt.dia)}Ø × ${fmtIn(H.bolt.len)}</b> into a cast-in <b>helicoil insert</b>`, `No holes in the girder flange · no field welding to the steel · removable`],
+      viewDir: new THREE.Vector3(t.s * 0.9, -0.55, 1.1), pad: 2.6, ghosts: () => [rec.concrete, girders[t.k].mesh], isoObjs: () => [tab, bolt, rec.inserts], frameObjs: () => [tab, bolt],
+      features: [{ inst: tab, off: [0, -H.tab.t, H.tab.l / 2], text: 'Tab plate', sub: `${fmtIn(H.tab.w)}×${fmtIn(H.tab.l)}×${fmtIn(H.tab.t)} · welded stand-off`, left: t.s < 0 }, { inst: bolt, off: [0, -G.tf - H.tab.t - H.bolt.headH, 0], text: 'Bolt', sub: `${fmtIn(H.bolt.dia)}Ø into the helicoil` }, { obj: girders[t.k].mesh, off: [x - girderOff(t.k), -G.tf / 2, t.s * G.bf / 2], text: `${G.section} flange`, sub: `${fmtIn(G.tf)} thick · tab hooks ${fmtIn(H.tab.underFlange)} under`, left: t.s > 0 }] });
+    tab.part = bolt.part = hd.part;
+  }
+}
+
+// ============================================================
+// CURBS — precast segments with dowels through the PVC sleeves, washers welded below (instanced)
+// ============================================================
+// curb profile (across × up): a rectangle with 45° haunches on the two top edges, extruded along the bridge
+const curbGeo = (() => {
+  const w = C.w, h = C.h, c = Math.min(C.haunch, w / 2 - 0.01, h - 0.01);
+  const shape = new THREE.Shape([[-w / 2, 0], [w / 2, 0], [w / 2, h - c], [w / 2 - c, h], [-w / 2 + c, h], [-w / 2, h - c]].map(([z, y]) => new THREE.Vector2(z, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: curbLen, bevelEnabled: false });
+  g.rotateY(Math.PI / 2);          // extrusion axis → world x
+  g.translate(-curbLen / 2, 0, 0);
+  g.computeVertexNormals();
+  return g;
+})();
+const curbArea = C.w * C.h - C.haunch * C.haunch;      // cross-section less the two 45° haunches
+const curbWeight = curbLen * curbArea * P.unitWeightPcf;
+const curbSlotsAll = [];
+for (const rec of allPlanks) for (const sl of rec.slots) curbSlotsAll.push({ rec, sl });
+const dLen = C.dowel.embed + P.t + C.dowel.projBelowPlank;
+const dowelLocal = side => [-1, 1].map(sx => ({ x: sx * (curbLen / 2 - C.dowel.endInset), z: side * (C.w / 2 - C.dowel.inset) }));
+const dowelGeoFor = {}, washerGeoFor = {}, weldGeoFor = {};
+for (const side of [-1, 1]) {
+  const dp = dowelLocal(side);
+  dowelGeoFor[side] = merge(dp.map(p => cylG(C.dowel.dia / 2, dLen, 'y', p.x, C.dowel.embed - dLen / 2, p.z, 10)));
+  washerGeoFor[side] = merge(dp.map(p => cylG(C.washer.od / 2, C.washer.t, 'y', p.x, -P.t - C.washer.t / 2, p.z, 16)));
+  weldGeoFor[side] = merge(dp.map(p => torusG(C.dowel.dia / 2 + 0.12 * IN, 0.1 * IN, p.x, -P.t - C.washer.t - 0.02 * IN, p.z)));
+}
+const nCurbs = curbSlotsAll.length, nSide = { '-1': curbSlotsAll.filter(c => c.sl.side < 0).length, '1': curbSlotsAll.filter(c => c.sl.side > 0).length };
+const curbFam = new Family(curbGeo, M.curb, nCurbs, 'curbs');
+const dowelFam = {}, washerFam = {}, weldFam = {};
+const weldMat = std(0xffffff, { emissive: C.weldColor, emissiveIntensity: 0.9, roughness: 0.6, toneMapped: false });   // instance colour runs white-hot → orange
+for (const side of [-1, 1]) {
+  dowelFam[side] = new Family(dowelGeoFor[side], M.rebarBottom, nSide[side], 'curbs', { cast: false });
+  washerFam[side] = new Family(washerGeoFor[side], M.galv, nSide[side], 'curbs', { cast: false });
+  weldFam[side] = new Family(weldGeoFor[side], weldMat, nSide[side], 'curbs', { cast: false, receive: false });
+  weldFam[side].colorFn = (e, c) => c.setRGB(1, 1, 1).lerp(_c2.setRGB(0.9, 0.35, 0.05), Math.min(1, e.a.c));   // white-hot → orange as the weld cools
+  curbsGroup.add(dowelFam[side].mesh, washerFam[side].mesh, weldFam[side].mesh);
+}
+const _c2 = new THREE.Color();
+curbsGroup.add(curbFam.mesh);
+const curbHover = { title: 'Precast curb', sub: `${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)} · 45° top haunches · ~${fmtN(curbWeight)} lb · drops over 2 sleeves` };
+const dowelHover = { title: `${C.dowel.label}s (${C.dowel.count})`, sub: `cast in the curb · ${fmtIn(C.dowel.embed)} embedded · drop through the plank sleeves` };
+const washerHover = { title: 'Field-welded washer', sub: `${fmtIn(C.washer.od)}Ø welded to the dowel under the plank · cut to replace the curb` };
+let curbNo = { '-1': 0, '1': 0 };
+for (const { rec, sl } of curbSlotsAll) {
+  const zc = sl.side * (halfW - C.setback - C.w / 2);
+  const home = { x: rec.worldX + sl.x, y: P.t, z: zc };
+  const n = ++curbNo[String(sl.side)];
+  const ex = { x: 0, y: 3.2, z: sl.side * 0.6 };
+  const conc = curbFam.add({ home: { ...home }, ex: { ...ex }, hover: curbHover, skewDep: rec.isSkew });
+  const dowels = dowelFam[sl.side].add({ home: { ...home }, ex: { ...ex }, hover: dowelHover, skewDep: rec.isSkew });
+  const washers = washerFam[sl.side].add({ home: { ...home }, ex: { ...ex }, hover: washerHover, skewDep: rec.isSkew });
+  const welds = weldFam[sl.side].add({ home: { ...home }, ex: { ...ex }, hover: washerHover, skewDep: rec.isSkew });
+  const cr = { conc, dowels, washers, welds, rec, sl, n, home };
+  curbs.push(cr);
+  const dp = dowelLocal(sl.side);
+  cr.part = registerPart({ kind: 'curb', skewDep: rec.isSkew, label: `Curb ${sl.side > 0 ? 'N' : 'S'}${n}`, sub: 'precast curb segment · replaceable', cat: 'curbs', index: n, objs: [conc, dowels, washers], isoObjs: () => [conc, dowels, washers, welds],
+    lines: [`<b>${fmtFtIn(curbLen)} × ${fmtIn(C.w)} wide × ${fmtIn(C.h)} high</b> · ~<b>${fmtN(curbWeight)} lb</b>`, `<b>${fmtIn(C.haunch)} × 45° haunches</b> on both top edges — releases cleanly from the form`, `(${C.dowel.count}) <b>${C.dowel.label}s</b> cast in, ${fmtIn(C.dowel.embed)} embedded, project ${fmtIn(P.t + C.dowel.projBelowPlank)} below`, `Dowels drop through the plank's <b>${P.sleeves.label}s</b> (2″ sleeves)`, `<b>${fmtIn(C.washer.od)}Ø washer welded</b> to each dowel in the field, under the plank`, `Cut the weld → lift the curb → drop in a new one`],
+    viewDir: new THREE.Vector3(-0.9, 0.55, sl.side * 1.3), pad: 2.4, ghosts: () => [rec.concrete],
+    features: [{ inst: conc, off: [0, C.h, 0], text: 'Curb segment', sub: `${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)} · ${fmtIn(C.haunch)} 45° top haunches` }, { inst: conc, off: [dp[0].x, -P.t / 2, dp[0].z], text: `${C.dowel.label}`, sub: 'through the PVC sleeve', left: true }, { inst: conc, off: [dp[1].x, -P.t - C.washer.t, dp[1].z], text: 'Welded washer', sub: 'field weld · replaceable curb' }] });
+  conc.part = dowels.part = washers.part = welds.part = cr.part;
+}
+const curbCountStd = curbs.filter(c => !c.rec.isSkew).length, curbCountSkew = curbs.length - curbCountStd;
+applyAnim();
+
+// ============================================================
+// LOG TRUCK — scale + the "230 kip truck rated" finale
+// ============================================================
+const truck = new THREE.Group(); world.add(truck);
+const truckAxles = [];
+{
+  const y0 = P.t, wr = 1.75, wz = 3.4;
+  const body = [];
+  body.push(boxG(16, 1.0, 7.5, 0, y0 + 3.4, 0));                    // tractor frame
+  body.push(boxG(6.5, 5.5, 8, 5.5, y0 + 6.7, 0));                   // cab
+  body.push(boxG(5, 3.2, 6.6, 11, y0 + 5.5, 0));                    // hood
+  body.push(boxG(34, 0.9, 7.5, -24, y0 + 3.6, 0));                  // trailer frame
+  const stakes = [];
+  for (const sx of [-9, -22, -37]) for (const sz of [-1, 1]) stakes.push(boxG(0.5, 7, 0.5, sx, y0 + 7.4, sz * 3.9));
+  const cabMesh = mesh(merge([body[1], body[2]]), M.truckCab, { hover: { title: '230 kip log truck', sub: 'design load illustration (AASHTO-style vehicle per the plan rating)' } });
+  const frameMesh = mesh(merge([body[0], body[3], ...stakes]), M.truckBody, { hover: { title: '230 kip log truck', sub: 'design load illustration' } });
+  truck.add(cabMesh, frameMesh);
+  const logs = [];
+  const rows = [[-2.4, 0, 2.4], [-1.2, 1.2], [0]];
+  rows.forEach((row, ri) => row.forEach(z => logs.push(cylG(1.1, 30, 'x', -23, y0 + 4.05 + 1.1 + ri * 1.95, z, 12))));
+  truck.add(mesh(merge(logs), M.log, { hover: { title: 'Log load', sub: 'Golden Road haul traffic' } }));
+  for (const ax of [11.5, 1.5, -3, -35, -39.5]) {
+    const w = mesh(merge([cylG(wr, 1.0, 'z', 0, 0, wz, 18), cylG(wr, 1.0, 'z', 0, 0, -wz, 18), cylG(0.35, 2 * wz, 'z', 0, 0, 0, 8)]), M.tire, { receive: false });
+    w.position.set(ax, y0 + wr, 0);
+    truck.add(w); truckAxles.push(w);
+  }
+  truck.position.set(78, 0, 0);   // parked on the west approach road after the crossing
+  addLayer('truck', truck);
+  track(truck);
+}
+
+// ============================================================
+// CAMERA PRESETS
+// ============================================================
+const CAMS = [
+  { id: 'hero', label: 'Hero', pos: [-68, 28, 58], tgt: [0, -2, 0] },
+  { id: 'top', label: 'Plan', pos: [0, 110, 0.01], tgt: [0, 0, 0] },
+  { id: 'side', label: 'Elevation', pos: [0, 4, 96], tgt: [0, -3, 0] },
+  { id: 'end', label: 'Along deck', pos: [-92, 9, 0], tgt: [0, -1, 0] },
+  { id: 'under', label: 'Underside', pos: [-14, -9.5, 30], tgt: [2, -1, 0] },
+  { id: 'curb', label: 'Curb detail', pos: [6, 4.5, 15.5], tgt: [0, 1, 7.4] },
+  { id: 'pin', label: 'Pin detail', pos: [-3.5, 3.2, 13], tgt: [0, 0.4, 8] },
+  { id: 'bearing', label: 'Bearing', pos: [40, 3, 22], tgt: [31.5, -3.2, 3.5] },
+];
+
+// ============================================================
+// PICKABLES · HOVER · SELECT
+// ============================================================
+// A pick "target" is either a Mesh (planks, steel, site) or an InstRec (tabs, bolts, curbs …).
+const pickables = [];
+const isShown = o => { for (let p = o; p && p !== scene; p = p.parent) if (!p.visible) return false; return true; };
+function rebuildPickables() {
+  pickables.length = 0;
+  world.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && (o.userData.hover || o.userData.part || o.userData.family) && o.visible && isShown(o)) pickables.push(o); });
+}
+const raycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
+function pick(cx, cy) {
+  pointerNDC.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hits = raycaster.intersectObjects(pickables, false);
+  for (const h of hits) {
+    const o = h.object;
+    if (o.userData.ghosted) continue;
+    if (o.isInstancedMesh) { const rec = o.userData.family.recs[h.instanceId]; if (!rec || rec.hidden) continue; return { target: rec, point: h.point }; }
+    if (o.material.transparent && o.material.opacity < 0.08) continue;
+    return { target: o, point: h.point };
+  }
+  return null;
+}
+const infoOf = t => t.isInst ? { hover: t.hover, part: t.part } : { hover: t.userData.hover, part: t.userData.part };
+const partOf = t => (t ? infoOf(t).part || null : null);
+const hlCache = new Map();
+function hlMat(mat, strength) {
+  const key = mat.uuid + ':' + strength + ':' + (mat.transparent ? mat.opacity : 1);
+  if (!hlCache.has(key)) {
+    const m = mat.clone();
+    m.emissive = new THREE.Color(strength > 0.3 ? 0x2563eb : 0x3b82f6);
+    m.emissiveIntensity = strength;
+    hlCache.set(key, m);
+  }
+  return hlCache.get(key);
+}
+const TINT_HOVER = new THREE.Color(0.78, 0.86, 1.25), TINT_SEL = new THREE.Color(0.6, 0.74, 1.45);
+const hlTargets = part => {
+  if (!part) return [];
+  if (part.objs) return part.objs;
+  if (part.rec) return [part.rec.concrete];
+  const out = []; part.group && part.group.traverse(o => { if (o.isMesh) out.push(o); }); return out;
+};
+let hoverSet = [], selSet = [], selected = null, hoverTarget = null;
+function setHL(list, strength) {
+  for (const o of list) {
+    if (o.isInst) { o.fam.mesh.setColorAt(o.id, strength ? (strength > 0.3 ? TINT_SEL : TINT_HOVER) : WHITE); o.fam.mesh.instanceColor.needsUpdate = true; continue; }
+    if (o.userData.ghosted) continue;
+    if (!o.userData.baseMat) o.userData.baseMat = o.material;
+    o.material = strength ? hlMat(o.userData.baseMat, strength) : o.userData.baseMat;
+    if (!strength) delete o.userData.baseMat;
+  }
+}
+function applyHighlights() {
+  setHL(hoverSet, 0); setHL(selSet, 0);
+  hoverSet = hoverTarget ? (partOf(hoverTarget) ? hlTargets(partOf(hoverTarget)) : [hoverTarget]) : [];
+  selSet = selected ? hlTargets(selected) : [];
+  setHL(hoverSet, 0.16);
+  setHL(selSet, 0.42);
+  invalidate();
+}
+
+const tooltip = document.getElementById('tooltip');
+let tipTimer = 0;
+function showTip(target, x, y, sticky) {
+  const { hover: hv, part } = infoOf(target);
+  const title = hv?.title || part?.label || '';
+  const sub = hv?.sub || part?.sub || '';
+  tooltip.innerHTML = `<b>${title}</b>${sub ? `<span>${sub}</span>` : ''}`;
+  tooltip.classList.add('show');
+  const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+  let tx = x + 14, ty = y + 14;
+  if (tx + w > innerWidth - 8) tx = x - w - 10;
+  if (ty + h > innerHeight - 8) ty = y - h - 10;
+  tooltip.style.transform = `translate(${Math.max(4, tx)}px, ${Math.max(4, ty)}px)`;
+  clearTimeout(tipTimer);
+  if (sticky) tipTimer = setTimeout(hideTip, 2800);
+}
+function hideTip() { tooltip.classList.remove('show'); }
+
+// info card
+const infoCard = document.getElementById('infoCard');
+const KIND_LABEL = { plank: 'Precast bridge plank', skew: 'Precast skew end plank', curb: 'Precast curb', holddown: 'Hold-down (tab + bolt)', girder: 'Girder · by others', diaphragm: 'Diaphragm · by others', bearing: 'Bearing · by others', abutment: 'Existing', rebar: 'Reinforcing' };
+function select(part) {
+  selected = part;
+  applyHighlights();
+  if (!part) { infoCard.hidden = true; updateViewOffset(); return; }
+  document.getElementById('infoKind').textContent = KIND_LABEL[part.kind] || part.kind;
+  document.getElementById('infoTitle').textContent = part.label;
+  document.getElementById('infoLines').innerHTML = (part.lines || []).map(l => `<div>${l}</div>`).join('');
+  infoCard.hidden = false;
+  if (isMobile) closeSheet();
+  updateViewOffset();
+}
+document.getElementById('infoClose').onclick = () => select(null);
+document.getElementById('deselectBtn').onclick = () => select(null);
+document.getElementById('isolateBtn').onclick = () => { if (selected) isolate(selected); };
+
+// pointer handling: hover on a mouse, tap on touch, click to select, drag / pinch = orbit
+const cv = renderer.domElement;
+const activePtrs = new Set();
+let downPos = null, downT = 0, dragging = false, multi = false, hoverPending = null;
+cv.addEventListener('pointerdown', e => {
+  activePtrs.add(e.pointerId);
+  if (activePtrs.size > 1) { multi = true; }
+  else { multi = false; downPos = { x: e.clientX, y: e.clientY }; downT = performance.now(); dragging = false; }
+  if (tlPlaying() && autoCam) disengageAutoCam();
+  dismissHint();
+});
+cv.addEventListener('pointermove', e => {
+  if (downPos && !multi && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) dragging = true;
+  if (e.pointerType === 'mouse' && !downPos) hoverPending = { x: e.clientX, y: e.clientY };
+});
+const releasePtr = e => { activePtrs.delete(e.pointerId); };
+cv.addEventListener('pointercancel', e => { releasePtr(e); if (!activePtrs.size) { downPos = null; dragging = false; multi = false; } });
+cv.addEventListener('pointerup', e => {
+  releasePtr(e);
+  if (activePtrs.size) return;                                   // other fingers still down
+  const tap = downPos && !multi && !dragging && (performance.now() - downT) < 700;
+  downPos = null; dragging = false; multi = false;
+  if (!tap) return;
+  const hit = pick(e.clientX, e.clientY);
+  if (hit) {
+    const part = partOf(hit.target);
+    if (e.pointerType !== 'mouse') { hoverTarget = hit.target; applyHighlights(); showTip(hit.target, e.clientX, e.clientY, true); }
+    if (part && !iso) select(part);
+  } else { if (iso) exitIsolate(true); else select(null); hoverTarget = null; applyHighlights(); hideTip(); }
+});
+cv.addEventListener('pointerleave', e => { if (e.pointerType !== 'mouse') return; hoverTarget = null; applyHighlights(); hideTip(); });   // touch fires pointerleave right after pointerup
+function processHover() {
+  if (!hoverPending) return;
+  const { x, y } = hoverPending; hoverPending = null;
+  const hit = pick(x, y);
+  const t = hit ? hit.target : null;
+  if (t !== hoverTarget) { hoverTarget = t; applyHighlights(); }
+  if (t) showTip(t, x, y, false); else hideTip();
+  cv.style.cursor = t ? 'pointer' : '';
+}
+
+// ============================================================
+// LAYERS · X-RAY · EXPLODE · END-PLANK MODE · VISIBILITY
+// ============================================================
+const LAYER_DEFS = [
+  ['planks', 'Planks', V.concrete], ['rebar', 'Rebar', V.rebarBottom], ['hardware', 'Pins · sleeves · tabs', V.galv], ['curbs', 'Curbs', V.curb],
+  ...(E.enabled ? [['endplanks', 'End planks', 0xb9c6d6]] : []), ['girders', 'Girders', V.steel], ['diaphragms', 'Diaphragms', V.steel], ['bearings', 'Bearings', 0x2c3138], ['abutments', 'Abutments · site', V.oldConcrete], ['truck', 'Truck', 0x2f5d3a],
+];
+const layerOn = Object.fromEntries(LAYER_DEFS.map(d => [d[0], true]));
+let xray = false, endMode = E.enabled ? E.mode : 'none', iso = null;
+const isoSet = new Set();
+skewPlanks.forEach(p => p.group.userData.skewPlank = true);
+cipWedges.forEach(w => w.userData.cipWedge = true);
+function applyVisibility() {
+  world.traverse(o => {
+    if (o === world || o.isCSS2DObject) return;
+    let vis = true;
+    const ln = o.userData.layer;
+    if (ln && !layerOn[ln]) vis = false;
+    if (o.userData.skewPlank) vis = vis && endMode === 'precast';
+    if (o.userData.cipWedge) vis = vis && endMode === 'cip';
+    if (iso && !isoSet.has(o)) vis = false;
+    o.userData.vis = vis;
+    o.visible = vis;
+  });
+  for (const f of families) {
+    const famVis = f.mesh.visible && isShown(f.mesh);
+    for (const r of f.recs) r.hidden = !(famVis && (!r.skewDep || endMode === 'precast') && (!iso || isoSet.has(r)));
+  }
+  applyAnim();
+  families.forEach(f => f.mesh.computeBoundingSphere());
+  rebuildPickables();
+}
+function setXray(on) {
+  xray = on;
+  for (const m of concreteMats) { m.transparent = on || m === planks[0].concrete.material; m.opacity = on ? 0.2 : 1; m.depthWrite = !on; m.needsUpdate = true; }
+  world.traverse(o => { if (o.isMesh && o.userData.concrete) o.castShadow = !on; });
+  curbFam.mesh.castShadow = !on;
+  hlCache.clear(); applyHighlights();
+  renderer.shadowMap.needsUpdate = true; invalidate();
+  const b = document.getElementById('xrayBtn'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+}
+document.getElementById('xrayBtn').onclick = () => setXray(!xray);
+const explodeInput = document.getElementById('explode');
+explodeInput.oninput = () => { if (tlPlaying()) { tl.pause(); updatePlayIcon(); } explode = +explodeInput.value; document.getElementById('explodeVal').textContent = Math.round(explode * 100) + '%'; applyAnim(); families.forEach(f => f.mesh.computeBoundingSphere()); };
+const endModeSeg = document.getElementById('endMode');
+function setEndMode(m) {
+  endMode = m; E.mode = m;
+  endModeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.v === m));
+  if (iso && iso.part.kind === 'skew' && m !== 'precast') exitIsolate(true);
+  applyVisibility(); renderQuantities(); updateDims();
+}
+endModeSeg.querySelectorAll('button').forEach(b => b.onclick = () => setEndMode(b.dataset.v));
+if (!E.enabled) { endModeSeg.hidden = true; endModeSeg.previousElementSibling.hidden = true; }
+
+const layerChips = document.getElementById('layerChips');
+for (const [name, label, color] of LAYER_DEFS) {
+  const b = document.createElement('button');
+  b.className = 'chip small active'; b.setAttribute('aria-pressed', 'true');
+  b.innerHTML = `<span class="sw" style="background:#${color.toString(16).padStart(6, '0')}"></span>${label}`;
+  b.onclick = () => { layerOn[name] = !layerOn[name]; b.classList.toggle('active', layerOn[name]); b.classList.toggle('off', !layerOn[name]); b.setAttribute('aria-pressed', layerOn[name]); applyVisibility(); };
+  layerChips.appendChild(b);
+}
+
+// ============================================================
+// CAMERA MOVES
+// ============================================================
+let camTween = null;
+function flyTo(pos, tgt, dur = 0.9, ease = 'power2.inOut') {
+  if (camTween) camTween.kill();
+  const p = camera.position.clone(), t = controls.target.clone();
+  const st = { u: 0 };
+  camTween = gsap.to(st, { u: 1, duration: dur, ease, onUpdate: () => {
+    camera.position.lerpVectors(p, pos, st.u); controls.target.lerpVectors(t, tgt, st.u); controls.update(); invalidate();
+  }, onComplete: () => { camTween = null; } });
+}
+const camChips = document.getElementById('camChips');
+for (const c of CAMS) {
+  const b = document.createElement('button'); b.className = 'chip small'; b.textContent = c.label;
+  b.onclick = () => { if (iso) exitIsolate(false); if (autoCam && tlPlaying()) disengageAutoCam(); flyTo(new THREE.Vector3(...c.pos), new THREE.Vector3(...c.tgt), 1.1); if (isMobile) closeSheet(); };
+  camChips.appendChild(b);
+}
+// world-space bounding box of a mesh or an instance
+const _box = new THREE.Box3();
+function boxOf(o, box) {
+  if (o.isInst) {
+    const hidden = o.hidden; o.hidden = false; instMatrix(o, _m); o.hidden = hidden;
+    _box.copy(o.fam.geo.boundingBox).applyMatrix4(_m).applyMatrix4(o.fam.mesh.matrixWorld);
+    return box.union(_box);
+  }
+  o.updateWorldMatrix(true, true);
+  return box.expandByObject(o);
+}
+function frameObjects(objs, dir, pad = 1.3, dur = 0.9) {
+  world.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  for (const o of objs) boxOf(o, box);
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const radius = Math.max(size.length() / 2, 0.6);
+  const aspectFix = camera.aspect < 1 ? Math.pow(1 / camera.aspect, 0.85) : 1;
+  const dist = radius * pad * aspectFix / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2));
+  const pos = center.clone().addScaledVector(dir.clone().normalize(), dist);
+  flyTo(pos, center, dur);
+}
+
+// ============================================================
+// ISOLATE — show one part (plus ghosted context) with callouts
+// ============================================================
+const isoBar = document.getElementById('isoBar');
+const callouts = [];
+let camBeforeIso = null;
+const ancestorsOf = o => { const out = []; for (let p = o.parent; p && p !== world; p = p.parent) out.push(p); return out; };
+function isoObjectsFor(part) {
+  if (part.isoObjs) return part.isoObjs();
+  const out = []; part.group && part.group.traverse(o => { if (o.isMesh) out.push(o); }); return out;
+}
+function isolate(part) {
+  if (tlPlaying()) { tl.pause(); updatePlayIcon(); }
+  if (tl.progress() < 0.999) { tl.progress(1); }               // isolate always shows the finished assembly
+  if (iso) exitIsolate(false, true);
+  else camBeforeIso = { pos: camera.position.clone(), tgt: controls.target.clone() };
+  iso = { part };
+  select(null); hoverTarget = null; applyHighlights(); hideTip();
+  isoSet.clear();
+  const shown = isoObjectsFor(part);
+  for (const o of shown) {
+    isoSet.add(o);
+    const m = o.isInst ? o.fam.mesh : o;
+    isoSet.add(m); ancestorsOf(m).forEach(a => isoSet.add(a));
+  }
+  const ghosts = part.ghosts ? part.ghosts() : [];
+  for (const g of ghosts) {
+    if (isoSet.has(g)) continue;
+    isoSet.add(g); ancestorsOf(g).forEach(a => isoSet.add(a));
+    g.userData.ghosted = true; g.userData.ghostMat = g.material; g.material = M.ghost; g.userData.ghostCast = g.castShadow; g.castShadow = false;
+  }
+  iso.ghosts = ghosts;
+  applyVisibility();
+  // callouts (CSS2D labels placed in world space)
+  world.updateMatrixWorld(true);
+  for (const f of (part.features || []).slice(0, isMobile ? 5 : 8)) {
+    const el = document.createElement('div');
+    el.className = 'callout' + (f.left ? ' left' : '');
+    el.innerHTML = `<div class="dot"></div><div class="box"><b>${f.text}</b>${f.sub ? `<span>${f.sub}</span>` : ''}</div>`;
+    const lab = new CSS2DObject(el);
+    let pos;
+    if (f.inst) { const r = f.inst, hidden = r.hidden; r.hidden = false; instMatrix(r, _m); r.hidden = hidden; pos = new THREE.Vector3(...f.off).applyMatrix4(_m); r.fam.mesh.localToWorld(pos); }
+    else { const host = f.obj || part.group; pos = host.localToWorld(new THREE.Vector3(...(f.off || f.p))); }
+    lab.position.copy(pos);
+    world.add(lab); callouts.push(lab);
+  }
+  // camera
+  const focus = part.frameObjs ? part.frameObjs() : shown.filter(o => o.isInst || !o.userData.ghosted);
+  frameObjects(focus, part.viewDir || new THREE.Vector3(-1, 0.7, 1), part.pad || 1.3, 1.0);
+  // bar
+  document.getElementById('isoTitle').innerHTML = `${part.label} <span>· ${part.sub || ''}</span>`;
+  const sib = siblingsOf(part);
+  document.getElementById('isoPrev').disabled = document.getElementById('isoNext').disabled = sib.length < 2;
+  isoBar.hidden = false;
+  if (isMobile) closeSheet();
+  updateViewOffset();
+  document.querySelectorAll('#partChips .chip').forEach(c => c.classList.toggle('active', c.dataset.kind === (part.libId || part.kind)));
+  renderer.shadowMap.needsUpdate = true; invalidate();
+}
+function exitIsolate(restoreCam = true, keepCam = false) {
+  if (!iso) return;
+  for (const g of iso.ghosts) { g.material = g.userData.ghostMat; g.castShadow = g.userData.ghostCast; delete g.userData.ghosted; delete g.userData.ghostMat; }
+  for (const l of callouts) { l.parent && l.parent.remove(l); l.element.remove(); }
+  callouts.length = 0;
+  iso = null; isoSet.clear();
+  applyVisibility();
+  isoBar.hidden = true; updateViewOffset();
+  document.querySelectorAll('#partChips .chip').forEach(c => c.classList.remove('active'));
+  if (restoreCam && camBeforeIso && !keepCam) { flyTo(camBeforeIso.pos, camBeforeIso.tgt, 0.9); camBeforeIso = null; }
+  renderer.shadowMap.needsUpdate = true; invalidate();
+}
+function siblingsOf(part) {
+  if (part.kind === 'rebar') return planks.map(p => rebarView(p));
+  return parts.filter(p => p.kind === part.kind && !(p.skewDep && endMode !== 'precast'));
+}
+function isoStep(dir) {
+  if (!iso) return;
+  const sib = siblingsOf(iso.part);
+  const key = p => p.kind === 'rebar' ? p.plankIndex : p.id;
+  const i = sib.findIndex(p => key(p) === key(iso.part));
+  const next = sib[(i + dir + sib.length) % sib.length];
+  if (iso.part.libId) next.libId = iso.part.libId;
+  isolate(next);
+}
+document.getElementById('isoPrev').onclick = () => isoStep(-1);
+document.getElementById('isoNext').onclick = () => isoStep(1);
+document.getElementById('isoBack').onclick = () => exitIsolate(true);
+
+// synthetic "rebar mats" view of a plank
+const rebarViews = new Map();
+function rebarView(rec) {
+  if (rebarViews.has(rec)) return rebarViews.get(rec);
+  const rb = rec.rebar, xs0 = rec.rebar ? null : null;
+  const v = { kind: 'rebar', libId: 'rebar', plankIndex: rec.spec.index, label: `Rebar mats · ${rec.spec.label.replace(' of ' + P.count, '')}`, sub: 'two mats of #5 bar', group: rec.group,
+    isoObjs: () => [rec.botMesh, rec.topMesh], ghosts: () => [rec.concrete, rec.sleeves, rec.sleeveHoles, rec.inserts, rec.pinsMesh, rec.holesMesh].filter(Boolean),
+    viewDir: new THREE.Vector3(-1, 0.85, 1.05), pad: 1.2,
+    lines: [`Bottom mat: <b>${R.label} @ ${fmtIn(R.bottomLongOC)} o.c.</b> with the ${fmtFtIn(P.l)} length · <b>${R.label} @ ${fmtIn(R.bottomTransOC)} o.c.</b> across`, `Top mat: <b>${R.label} @ ${fmtIn(R.topLongOC)} o.c.</b> both ways`, `${fmtIn(R.bottomCover)} bottom cover · ${fmtIn(R.matGap)} clear between mats · ${fmtIn(topCoverActual)} top cover`, `${rb.bottomCount + rb.topCount} bars · ${fmtN(rb.bottomLen + rb.topLen)} lf · ${fmtN((rb.bottomLen + rb.topLen) * R.plf)} lb per plank`],
+    features: [
+      { p: [-P.w / 2 + R.edgeCover + r, yBotLong, -halfW + 1.5], text: `Bottom mat · long bars`, sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. · lowest layer`, left: true },
+      { p: [0, yBotTrans, -halfW + R.edgeCover + 2 * R.bottomTransOC], text: `Bottom mat · transverse`, sub: `${R.label} @ ${fmtIn(R.bottomTransOC)} o.c.` },
+      { p: [0, yTopTrans, halfW - R.edgeCover - 2 * R.topTransOC], text: `Top mat · transverse`, sub: `${R.label} @ ${fmtIn(R.topTransOC)} o.c.`, left: true },
+      { p: [P.w / 2 - R.edgeCover - r - (rec.isSkew ? 0 : 0), yTopLong, halfW - 1.5], text: `Top mat · long bars`, sub: `${R.label} @ ${fmtIn(R.topLongOC)} o.c. · ${fmtIn(topCoverActual)} cover` },
+      { p: [0, yBotLong - r, 0], text: `${fmtIn(R.bottomCover)} bottom cover`, sub: 'plank bottom → first bar' },
+    ] };
+  rebarViews.set(rec, v); return v;
+}
+
+// parts library chips
+const demoPlank = planks[Math.min(planks.length - 1, Math.floor(P.count / 2))];
+const demoGirder = Math.floor((G.count - 1) / 2);
+const LIB = [
+  { id: 'plank', label: 'Bridge plank', pick: () => demoPlank.part },
+  { id: 'rebar', label: 'Rebar mats', pick: () => rebarView(demoPlank) },
+  { id: 'holddown', label: 'Hold-down tab + bolt', pick: () => (holddowns.find(h => h.rec === demoPlank && h.t.k === demoGirder && h.t.s > 0) || holddowns.find(h => h.rec === demoPlank) || holddowns[0]).part },
+  { id: 'curb', label: 'Curb', pick: () => (curbs.find(c => c.rec === demoPlank && c.sl.side > 0) || curbs[0]).part },
+  ...(E.enabled ? [{ id: 'skew', label: 'Skew end plank', pick: () => skewPlanks[1].part, needsPrecast: true }] : []),
+  { id: 'girder', label: `Girder ${G.section}`, pick: () => parts.find(p => p.kind === 'girder' && p.index === demoGirder) },
+  { id: 'diaphragm', label: 'Diaphragm', pick: () => parts.find(p => p.kind === 'diaphragm' && p.label.includes('line 2, bay 2')) || parts.find(p => p.kind === 'diaphragm') },
+  { id: 'bearing', label: 'Bearing', pick: () => parts.find(p => p.kind === 'bearing' && p.label === 'Bearing · G3 west') || parts.find(p => p.kind === 'bearing') },
+  { id: 'abutment', label: 'Existing abutment', pick: () => parts.find(p => p.kind === 'abutment') },
+];
+const partChips = document.getElementById('partChips');
+for (const it of LIB) {
+  const b = document.createElement('button'); b.className = 'chip'; b.textContent = it.label; b.dataset.kind = it.id;
+  b.onclick = () => {
+    if (iso && (iso.part.libId || iso.part.kind) === it.id) { exitIsolate(true); return; }
+    if (it.needsPrecast && endMode !== 'precast') setEndMode('precast');
+    const p = it.pick(); if (p) { p.libId = it.id; isolate(p); }
+    if (isMobile) closeSheet();
+  };
+  partChips.appendChild(b);
+}
+
+// ============================================================
+// BUILD TIMELINE (GSAP) — start states, tweens, chapters, captions
+// ============================================================
+const T = CONFIG.timeline;
+const CH = [];
+const chapter = (id, t0, t1, label, title, desc) => CH.push({ id, t0, t1, label, title, desc });
+const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.inOut' } });
+const A_ = o => (o.isInst ? o.a : o.userData.anim.a);
+let tEnd = 0;
+
+// — start states (the timeline plays FROM these TO home) —
+girders.forEach(g => { const a = A_(g.group); a.dy = 34; a.v = 0; });
+diaphragms.forEach(d => { const a = A_(d); a.dy = -24; a.v = 0; });
+planks.forEach((p, i) => { const a = A_(p.group); a.dy = 22; a.dx = i === 0 ? 0 : 0.55; a.v = 0; });
+skewPlanks.forEach(p => { const a = A_(p.group); a.dy = 8; a.dx = p.side * 6; a.v = 0; });
+holddowns.forEach(h => { h.tab.a.dz = h.t.s * 1.5; h.tab.a.v = 0; h.bolt.a.dy = -1.7; h.bolt.a.ry = 0; h.bolt.a.v = 0; });
+curbs.forEach(c => { c.conc.a.dy = 6; c.conc.a.v = 0; c.dowels.a.dy = 6; c.dowels.a.v = 0; c.washers.a.dy = -0.7; c.washers.a.v = 0; c.welds.a.s = 0; c.welds.a.c = 0; });
+A_(truck).dx = -168; A_(truck).v = 0;
+const reveal = (a, at) => tl.set(a, { v: 1 }, at);     // a part becomes visible the moment it starts moving in
+
+// ── Chapter 0 · site ──
+chapter('site', 0, 3.5, 'Site', 'The abutments stay. Everything above them is new.', `Existing skewed concrete abutments at Russell Stream. New ${G.section} steel per the engineered plan, then our precast deck.`);
+
+// ── Chapter 1 · steel ──
+let t = 3.5;
+chapter('steel', t, 13, 'Steel', `Five ${G.section} girders, ${fmtFtIn(G.length)} long`, `Set ${fmtFtIn(G.spacing)} o.c. into the existing pockets, each stepped ${fmtFtIn(G.staggerPerBeam)} for the ${skewDeg.toFixed(1)}° skew. ${diaphragms.length} ${D.section} diaphragms bolt between them.`);
+girders.forEach((g, k) => { reveal(A_(g.group), t + k * 1.0); tl.to(A_(g.group), { dy: 0, duration: 1.7, ease: 'power2.inOut' }, t + k * 1.0); });
+diaphragmX.forEach((_, li) => { for (let k = 0; k < G.count - 1; k++) { const d = diaphragms[li * (G.count - 1) + k]; reveal(A_(d), 9.2 + li * 0.45 + k * 0.12); tl.to(A_(d), { dy: 0, duration: 0.9, ease: 'power2.out' }, 9.2 + li * 0.45 + k * 0.12); } });
+
+// ── Chapter 2 · inside a plank (the hero plank hovers, goes x-ray, the mats draw in) ──
+t = 13;
+const hero = planks[0], heroMat = hero.concrete.material;
+hero.botMesh.scale.z = 0.001; hero.topMesh.scale.z = 0.001;
+chapter('inside', t, 19.3, 'Inside a plank', `Two mats of ${R.label} bar in every plank`, `Bottom mat ${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. with the ${fmtFtIn(P.l)} length and @ ${fmtIn(R.bottomTransOC)} across · top mat @ ${fmtIn(R.topLongOC)} both ways · ${fmtIn(R.bottomCover)} / ${fmtIn(R.matGap)} / ${fmtIn(topCoverActual)} cover. Pins one edge, holes the other, inserts and sleeves cast in.`);
+reveal(A_(hero.group), t);
+tl.to(A_(hero.group), { dy: 6, duration: 1.3, ease: 'power2.out' }, t);
+tl.to(heroMat, { opacity: 0.22, duration: 0.5 }, t + 1.2);
+tl.to(hero.botMesh.scale, { z: 1, duration: 1.3, ease: 'power2.out' }, t + 1.4);
+tl.to(hero.topMesh.scale, { z: 1, duration: 1.3, ease: 'power2.out' }, t + 2.2);
+tl.to(hero.pinMat, { emissiveIntensity: 1.0, duration: 0.3, yoyo: true, repeat: 1 }, t + 3.4);
+tl.to(heroMat, { opacity: 1, duration: 0.5 }, t + 4.0);
+tl.to(A_(hero.group), { dy: 0, duration: 1.2, ease: 'power2.inOut' }, t + 4.6);
+
+// ── Chapter 3 · planks ──
+t = 19.3;
+const plankT = i => t + 0.4 + (i - 1) * T.plankStep;
+chapter('planks', t, plankT(P.count - 1) + 1.9, 'Planks', `${P.count} precast planks click together`, `Each ${fmtFtIn(P.w)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)} plank lands on the flanges beside the last one, then slides home over ${P.pins.count} ¾″ pins.`);
+planks.forEach((p, i) => {
+  if (i === 0) return;
+  const a = A_(p.group), t0 = plankT(i);
+  reveal(a, t0);
+  tl.to(a, { dy: 0, duration: 1.15, ease: 'power2.inOut' }, t0);
+  if (i > 0) {
+    tl.to(a, { dx: 0, duration: 0.34, ease: 'power3.in' }, t0 + 1.15);
+    tl.to(planks[i - 1].pinMat, { emissiveIntensity: 1.3, duration: 0.14, yoyo: true, repeat: 1, ease: 'power1.inOut' }, t0 + 1.42);
+  }
+});
+const planksEnd = plankT(P.count - 1) + 1.9;
+
+// ── Chapter 3 · hold-downs ──
+t = planksEnd;
+const hdEnd = t + 0.6 + (P.count - 1) * 0.5 + 1.4, hdChapterEnd = Math.max(hdEnd + 0.4, t + 10.5);
+chapter('holddowns', t, hdChapterEnd, 'Hold-downs', 'Tabs hook the flange, bolts thread into cast-in inserts', `From below: a ${fmtIn(H.tab.w)} × ${fmtIn(H.tab.l)} galvanized tab slips under each ${G.section} flange and a ${fmtIn(H.bolt.dia)}Ø bolt pulls it up into the plank's helicoil insert. ${holddowns.filter(h => !h.rec.isSkew).length} per deck.`);
+const hdStd = holddowns.filter(h => !h.rec.isSkew), hdSkew = holddowns.filter(h => h.rec.isSkew);
+tl.to(hemi, { intensity: 1.15, duration: 1.2 }, t + 0.8);
+tl.to(sun, { intensity: 1.5, duration: 1.2 }, t + 0.8);
+hdStd.forEach(h => {
+  const i = h.rec.spec.index, t0 = t + 0.6 + i * 0.5;
+  reveal(h.tab.a, t0); reveal(h.bolt.a, t0 + 0.45);
+  tl.to(A_(h.tab), { dz: 0, duration: 0.55, ease: 'power2.out' }, t0);
+  tl.to(A_(h.bolt), { dy: 0, duration: 0.7, ease: 'power2.inOut' }, t0 + 0.45);
+  tl.to(A_(h.bolt), { ry: Math.PI * 4, duration: 0.75, ease: 'power1.out' }, t0 + 0.6);
+});
+
+// ── Chapter 4 · curbs ──
+t = hdChapterEnd;
+const curbsStd = curbs.filter(c => !c.rec.isSkew), curbsSkew = curbs.filter(c => c.rec.isSkew);
+tl.to(hemi, { intensity: 0.55, duration: 1.0 }, t);
+tl.to(sun, { intensity: 2.4, duration: 1.0 }, t);
+chapter('curbs', t, t + 0.5 + curbsStd.length * T.curbStep + 4.2, 'Curbs', `${curbsStd.length} precast curbs drop over the sleeves`, `Each ${fmtFtIn(curbLen)} curb's ${C.dowel.count} dowels pass through the plank's ${P.sleeves.label}s. Below, a ${fmtIn(C.washer.od)}Ø washer is welded on — cut it to swap a curb later.`);
+const curbDrop = (c, t0, gap) => {
+  reveal(c.conc.a, t0); reveal(c.dowels.a, t0); reveal(c.washers.a, t0 + gap);
+  tl.to(c.conc.a, { dy: 0, duration: 0.85, ease: 'power2.in' }, t0);
+  tl.to(c.dowels.a, { dy: 0, duration: 0.85, ease: 'power2.in' }, t0);
+  tl.to(c.washers.a, { dy: 0, duration: 0.45, ease: 'power2.out' }, t0 + gap);
+  tl.to(c.welds.a, { s: 1, duration: 0.25, ease: 'back.out(3)' }, t0 + gap + 0.4);      // weld bead appears white-hot …
+  tl.to(c.welds.a, { c: 1, duration: 1.4, ease: 'power1.out' }, t0 + gap + 0.5);       // … and cools to orange
+};
+curbsStd.forEach((c, n) => curbDrop(c, t + 0.5 + n * T.curbStep, 1.7));
+const curbsEnd = t + 0.5 + curbsStd.length * T.curbStep + 4.2;
+
+// ── Chapter 5 · end planks (only when the optional skew planks are enabled) ──
+t = curbsEnd;
+if (E.enabled) {
+chapter('ends', t, t + 8, 'Skew ends', `Two trapezoidal planks close the ${skewDeg.toFixed(1)}° skew`, `Cast to the abutment angle (${fmtFtIn(E.minLength)} → ${fmtFtIn(E.minLength + 2 * halfW * tanSkew)}), they pin to the field planks and bear on the abutment top. Or cast the ends in place — toggle under Layers.`);
+skewPlanks.forEach((p, j) => {
+  const a = A_(p.group), t0 = t + 0.4 + j * 1.6;
+  reveal(a, t0);
+  tl.to(a, { dy: 0, duration: 1.1, ease: 'power2.inOut' }, t0);
+  tl.to(a, { dx: 0, duration: 0.6, ease: 'power3.in' }, t0 + 1.1);
+  const neighbor = p.side > 0 ? planks[P.count - 1] : p;
+  tl.to(neighbor.pinMat, { emissiveIntensity: 1.3, duration: 0.14, yoyo: true, repeat: 1 }, t0 + 1.62);
+});
+hdSkew.forEach((h, n) => { const t0 = t + 3.9 + n * 0.08; reveal(h.tab.a, t0); reveal(h.bolt.a, t0 + 0.4); tl.to(A_(h.tab), { dz: 0, duration: 0.5, ease: 'power2.out' }, t0); tl.to(A_(h.bolt), { dy: 0, duration: 0.6 }, t0 + 0.4); tl.to(A_(h.bolt), { ry: Math.PI * 4, duration: 0.7, ease: 'power1.out' }, t0 + 0.5); });
+curbsSkew.forEach((c, n) => curbDrop(c, t + 4.6 + n * 0.12, 1.3));
+}
+const endsEnd = E.enabled ? t + 8 : curbsEnd;
+
+// ── Chapter 6 · finale ──
+t = endsEnd;
+chapter('done', t, t + 12, 'Open', CONFIG.project.rating, `${fmtN(2 * deckHalfL)}′ of precast deck (${P.count} planks), ${fmtFtIn(P.l - 2 * C.w)} clear between curbs, on five ${G.section} girders. Every plank clamped, every curb replaceable.`);
+reveal(A_(truck), t + 1.0);
+tl.to(A_(truck), { dx: 0, duration: 9, ease: 'none' }, t + 1.2);
+truckAxles.forEach(w => tl.to(w.rotation, { z: -168 / 1.75, duration: 9, ease: 'none' }, t + 1.2));
+tEnd = t + 12;
+tl.to({}, { duration: 0.01 }, tEnd);   // pad the end
+tl.eventCallback('onUpdate', onTimelineUpdate);
+tl.eventCallback('onComplete', onTimelineUpdate);
+
+// — auto-camera keyframes: [time, position, target] —
+const KF = [];
+const kf = (tt, pos, tgt) => KF.push({ t: tt, pos: new THREE.Vector3(...pos), tgt: new THREE.Vector3(...tgt) });
+kf(0, [-72, 20, 50], [0, -4, 0]);
+kf(3.5, [-60, 24, 42], [0, -2, 0]);
+kf(9.5, [-26, 15, 50], [0, -2, 0]);
+kf(12.4, [10, 12, 48], [0, -2, 0]);
+{
+  const x0 = plankX(0);
+  kf(13.4, [x0 - 15, 9, 17], [x0, 6.4, 0]);
+  kf(17.4, [x0 + 6, 10.5, 18], [x0, 6.2, 0]);
+  kf(19.0, [x0 - 12, 10, 22], [x0, 0.5, 1]);
+}
+planks.forEach((p, i) => {
+  if (i === 0) return;
+  const tt = plankT(i) + 0.75, x = plankX(i);
+  if (i === 3) {
+    kf(tt - 0.2, [x - 11, 9.5, 21], [x, 0.5, 1]);
+    kf(tt + 0.3, [x - 2.2, 2.4, 13.4], [x + 0.4, 0.45, 7.4]);
+    kf(tt + 1.0, [x - 1.7, 2.2, 12.9], [x + 0.4, 0.45, 7.4]);
+  } else if (i === 4) {
+    kf(tt + 0.35, [x - 12, 10, 22], [x, 0.5, 1]);
+  } else kf(tt, [x - 12, 10, 22], [x, 0.5, 1]);
+});
+kf(planksEnd - 0.3, [plankX(P.count - 1) - 6, 9, 24], [plankX(P.count - 1) - 4, 0.5, 0]);
+{
+  const t0 = planksEnd;
+  kf(t0 + 1.2, [-12, -12, 24], [0, -1.5, 0]);
+  const span = hdChapterEnd - t0;
+  kf(t0 + 2.4, [-deckHalfL, -10, 11], [-deckHalfL + 6, -0.5, 0]);
+  kf(t0 + span * 0.62, [deckHalfL - 4, -10, 11], [deckHalfL - 8, -0.5, 0]);
+  const hd = holddowns.find(h => h.rec === demoPlank && h.t.k === demoGirder && h.t.s > 0) || holddowns.find(h => h.rec === demoPlank) || holddowns[0];
+  kf(t0 + span * 0.70, [hd.x + 3.2, -2.6, hd.zb + 1.6], [hd.x, -0.3, hd.zb]);
+  kf(t0 + span * 0.85, [hd.x + 2.8, -2.3, hd.zb + 1.5], [hd.x, -0.3, hd.zb]);
+  kf(t0 + span * 0.94, [hd.x + 7, -9, 18], [hd.x, -1, 4]);          // back out from under the deck before rising
+}
+{
+  const t0 = CH.find(c => c.id === 'curbs').t0;
+  kf(t0, [-52, 13, 34], [0, 0.5, 0]);
+  kf(t0 + 1.2, [-deckHalfL - 6, 10, 26], [-deckHalfL + 6, 1.2, 4]);
+  kf(t0 + 0.5 + curbsStd.length * T.curbStep, [deckHalfL + 2, 10, 26], [deckHalfL - 6, 1.2, 4]);
+  kf(t0 + 0.5 + curbsStd.length * T.curbStep + 1.3, [6, -3.4, 14.5], [1, -0.5, 7.7]);
+  kf(curbsEnd - 0.2, [4, -3.0, 14], [0, -0.5, 7.7]);
+}
+if (E.enabled) {
+  const t0 = curbsEnd;
+  kf(t0 + 0.6, [-54, 13, 30], [-31, 0.6, 0]);
+  kf(t0 + 2.2, [-50, 12, 28], [-31, 0.6, 0]);
+  kf(t0 + 3.6, [50, 13, 32], [31, 0.6, 0]);
+  kf(t0 + 7.6, [46, 11, 30], [31, 0.6, 0]);
+}
+{
+  const t0 = endsEnd;
+  kf(t0 + 0.5, [-70, 24, 58], [0, 0, 0]);
+  kf(t0 + 6, [-4, 20, 72], [0, 0, 0]);
+  kf(t0 + 12, [64, 22, 54], [0, 0, 0]);
+}
+KF.sort((a, b) => a.t - b.t);
+const smooth = u => u * u * (3 - 2 * u);
+const camPos = new THREE.Vector3(), camTgt = new THREE.Vector3();
+// per-chapter zoom (CONFIG defaults, overridden by what the user dialled in on this browser)
+const zoomOf = {};
+for (const c of CH) zoomOf[c.id] = (T.zoom && T.zoom[c.id]) || 1;
+try { const st = JSON.parse(localStorage.getItem('huber-bridge.autocamZoom') || 'null'); if (st && st.v === T.zoomVersion) Object.assign(zoomOf, st.z); } catch (e) { }
+const chapterAt = tt => CH.find(c => tt >= c.t0 && tt < c.t1) || CH[CH.length - 1];
+function zoomAt(tt) {
+  const i = CH.indexOf(chapterAt(tt)), z = zoomOf[CH[i].id] || 1;
+  if (i === 0) return z;
+  const u = Math.min(1, (tt - CH[i].t0) / 1.2);          // ease into a new chapter's zoom over 1.2 s
+  return (zoomOf[CH[i - 1].id] || 1) * (1 - smooth(u)) + z * smooth(u);
+}
+function sampleCam(tt) {
+  if (tt <= KF[0].t) { camPos.copy(KF[0].pos); camTgt.copy(KF[0].tgt); }
+  else {
+    let found = false;
+    for (let i = 0; i < KF.length - 1; i++) {
+      const a = KF[i], b = KF[i + 1];
+      if (tt >= a.t && tt <= b.t) {
+        const u = b.t > a.t ? smooth((tt - a.t) / (b.t - a.t)) : 1;
+        camPos.lerpVectors(a.pos, b.pos, u); camTgt.lerpVectors(a.tgt, b.tgt, u); found = true; break;
+      }
+    }
+    if (!found) { camPos.copy(KF[KF.length - 1].pos); camTgt.copy(KF[KF.length - 1].tgt); }
+  }
+  // chapter zoom, then: shots are authored for landscape, so on a portrait phone back the camera off
+  let f = 1 / zoomAt(tt);
+  if (camera.aspect < 1) f *= Math.min(1.9, Math.pow(1 / camera.aspect, 0.85));
+  if (f !== 1) { const dir = camPos.clone().sub(camTgt); camPos.copy(camTgt).addScaledVector(dir, f); }
+}
+
+// — playback UI —
+let autoCam = true, speed = 1;
+const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub'), scrubFill = document.getElementById('scrubFill');
+const timeLbl = document.getElementById('timeLbl'), caption = document.getElementById('caption'), camPill = document.getElementById('camPill');
+const autocamBtn = document.getElementById('autocamBtn'), speedBtn = document.getElementById('speedBtn');
+const chaptersEl = document.getElementById('chapters'), ticksEl = document.getElementById('ticks');
+const tlPlaying = () => tl.isActive() && !tl.paused();
+for (const c of CH) {
+  const b = document.createElement('button'); b.textContent = c.label; b.dataset.id = c.id;
+  b.onclick = () => { if (iso) exitIsolate(false); tl.pause(); tl.seek(c.t0 + 0.01); if (autoCam) { sampleCam(c.t0 + 0.01); flyTo(camPos.clone(), camTgt.clone(), 0.7); } setTimeout(() => tl.play(), 200); updatePlayIcon(); };
+  chaptersEl.appendChild(b);
+  const tick = document.createElement('i'); tick.style.left = (c.t0 / tEnd * 100) + '%'; ticksEl.appendChild(tick);
+}
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+let capId = null, lastPct = -1, lastSec = -1, lastChId = null;
+const chapterBtns = [...chaptersEl.children];
+function onTimelineUpdate() {
+  applyAnim();
+  const tt = tl.time();
+  const pct = Math.round(tt / tEnd * 1000);
+  if (pct !== lastPct) { lastPct = pct; scrub.value = pct; scrubFill.style.width = (pct / 10) + '%'; }
+  const sec = Math.floor(tt);
+  if (sec !== lastSec) { lastSec = sec; timeLbl.innerHTML = fmtTime(tt) + '<span class="tot"> / ' + fmtTime(tEnd) + '</span>'; }
+  const ch = CH.find(c => tt >= c.t0 && tt < c.t1) || CH[CH.length - 1];
+  if (ch.id !== lastChId) {
+    lastChId = ch.id; updateZoomLbl();
+    chapterBtns.forEach((b, i) => { b.classList.toggle('active', CH[i].id === ch.id); b.classList.toggle('done', CH[i].t1 <= tt); });
+    const b = chapterBtns[CH.indexOf(ch)];
+    if (b && chaptersEl.scrollWidth > chaptersEl.clientWidth) chaptersEl.scrollTo({ left: b.offsetLeft - chaptersEl.clientWidth / 2 + b.offsetWidth / 2, behavior: 'smooth' });
+  }
+  const active = tl.progress() < 0.999;
+  if (active && ch.id !== capId) { capId = ch.id; document.getElementById('capK').textContent = `Chapter ${CH.indexOf(ch) + 1} · ${ch.label}`; document.getElementById('capT').textContent = ch.title; document.getElementById('capD').textContent = ch.desc; }
+  caption.classList.toggle('show', active && !iso);
+  if (!active) capId = null;
+  if (autoCam && active && !iso) { sampleCam(tt); camera.position.copy(camPos); controls.target.copy(camTgt); controls.update(); invalidate(); }
+  updatePlayIcon();
+}
+let lastPlaying = false, autoCollapsed = false;
+function setPlayingUI(playing) {
+  document.body.classList.toggle('playing', playing);
+  if (playing) {
+    if (isMobile) closeSheet();
+    else if (!side.classList.contains('collapsed')) { side.classList.add('collapsed'); autoCollapsed = true; }
+    menuBtn.setAttribute('aria-expanded', 'false');
+  } else if (autoCollapsed) { side.classList.remove('collapsed'); autoCollapsed = false; menuBtn.setAttribute('aria-expanded', 'true'); }
+}
+function updatePlayIcon() {
+  const p = tlPlaying();
+  playBtn.textContent = p ? '❚❚' : '▶';
+  if (p !== lastPlaying) { lastPlaying = p; setPlayingUI(p); }
+}
+playBtn.onclick = () => {
+  if (iso) exitIsolate(false);
+  select(null);
+  if (tlPlaying()) { tl.pause(); updatePlayIcon(); return; }
+  if (tl.progress() >= 0.999) { tl.pause(0); onTimelineUpdate(); if (autoCam) { sampleCam(0); flyTo(camPos.clone(), camTgt.clone(), 0.8); } setTimeout(() => { tl.play(); updatePlayIcon(); }, 300); }
+  else tl.play();
+  updatePlayIcon();
+};
+scrub.addEventListener('input', () => { if (iso) exitIsolate(false); tl.pause(); tl.time(+scrub.value / 1000 * tEnd); onTimelineUpdate(); if (autoCam) { sampleCam(tl.time()); camera.position.copy(camPos); controls.target.copy(camTgt); controls.update(); } updatePlayIcon(); });
+speedBtn.onclick = () => { speed = { 0.5: 1, 1: 2, 2: 0.5 }[speed]; tl.timeScale(speed); speedBtn.textContent = speed + '×'; };
+const zoomLbl = document.getElementById('zoomLbl');
+function updateZoomLbl() { const ch = chapterAt(tl.time()); zoomLbl.textContent = `🔍 ${(zoomOf[ch.id] || 1).toFixed(1)}×`; zoomLbl.title = `Auto-camera zoom for “${ch.label}” (1.0 = as authored). Click to copy all chapter values.`; }
+function nudgeZoom(d) {
+  const ch = chapterAt(tl.time());
+  zoomOf[ch.id] = Math.round(Math.min(3, Math.max(0.4, (zoomOf[ch.id] || 1) + d)) * 10) / 10;
+  try { localStorage.setItem('huber-bridge.autocamZoom', JSON.stringify({ v: T.zoomVersion, z: zoomOf })); } catch (e) { }
+  updateZoomLbl();
+  if (!autoCam) engageAutoCam();
+  if (!tlPlaying() && tl.progress() < 0.999) { sampleCam(tl.time()); flyTo(camPos.clone(), camTgt.clone(), 0.35); }
+  console.info('Huber auto-cam zoom per chapter → CONFIG.timeline.zoom =', JSON.stringify(zoomOf));
+}
+document.getElementById('zoomIn').onclick = () => nudgeZoom(0.1);
+document.getElementById('zoomOut').onclick = () => nudgeZoom(-0.1);
+zoomLbl.onclick = () => { const txt = 'zoom: ' + JSON.stringify(zoomOf); (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => { zoomLbl.textContent = 'copied'; setTimeout(updateZoomLbl, 900); }, () => console.info(txt)); };
+function disengageAutoCam() { autoCam = false; autocamBtn.classList.remove('active'); camPill.classList.add('show'); }
+function engageAutoCam() { autoCam = true; autocamBtn.classList.add('active'); camPill.classList.remove('show'); if (tl.progress() < 0.999) { sampleCam(tl.time()); flyTo(camPos.clone(), camTgt.clone(), 0.8); } }
+autocamBtn.onclick = () => autoCam ? disengageAutoCam() : engageAutoCam();
+camPill.onclick = engageAutoCam;
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+  else if (e.key === 'Escape') { if (iso) exitIsolate(true); else select(null); document.getElementById('quant').classList.remove('open'); }
+  else if (e.key === 'ArrowLeft' && iso) isoStep(-1);
+  else if (e.key === 'ArrowRight' && iso) isoStep(1);
+});
+
+// initial state: fully assembled (end of the build)
+tl.progress(1); tl.pause();
+onTimelineUpdate(); updateZoomLbl();
+families.forEach(f => f.mesh.computeBoundingSphere());
+
+// ============================================================
+// QUANTITIES
+// ============================================================
+const quant = document.getElementById('quant');
+function renderQuantities() {
+  const precast = E.enabled && endMode === 'precast';
+  const sp = skewPlanks[0] || null, pl = planks[1] || planks[0];
+  const nStd = P.count, nSkew = precast ? 2 : 0;
+  const stdVol = pl.volume, skewVol = sp ? sp.volume : 0;
+  const stdBars = pl.rebar.bottomCount + pl.rebar.topCount, stdLf = pl.rebar.bottomLen + pl.rebar.topLen;
+  const skewLf = sp ? sp.rebar.bottomLen + sp.rebar.topLen : 0;
+  const hdN = hdStd.length + (precast ? hdSkew.length : 0);
+  const curbN = curbCountStd + (precast ? curbCountSkew : 0);
+  const sleeveN = planks.reduce((a, p) => a + p.dowelPts.length, 0) + (precast ? skewPlanks.reduce((a, p) => a + p.dowelPts.length, 0) : 0);
+  const pinsN = planks.filter(p => p.pinsMesh).length * P.pins.count + (precast ? P.pins.count : 0);
+  const holesN = planks.filter(p => p.holesMesh).length * P.pins.count + (precast ? P.pins.count : 0);
+  const totalCy = (nStd * stdVol + nSkew * skewVol + curbN * curbLen * curbArea) / 27;
+  const girderLb = G.count * G.length * G.weightPlf, diaLb = diaphragms.length * D.length * D.weightPlf, stubLb = G.count * 2 * B.stubH * 65;
+  const row = (a, b, c, d) => `<tr><td>${a}</td><td class="n">${b}</td><td>${c}</td><td class="n">${d}</td></tr>`;
+  // Support check: how much of the square plank field runs past the (staggered) girder ends and bears on
+  // the abutment top / compacted approach instead of steel.
+  let planksOffSteel = 0, offMax = 0, planksNoSteel = 0;
+  for (const p of planks) {
+    const x0 = p.worldX - P.w / 2, x1 = p.worldX + P.w / 2;
+    let worst = 0, anySteel = false;
+    for (let k = 0; k < G.count; k++) { const [g0, g1] = girderRange(k); const on = Math.max(0, Math.min(x1, g1) - Math.max(x0, g0)); if (on > 0.05) anySteel = true; worst = Math.max(worst, P.w - on); }
+    if (!anySteel) planksNoSteel++;
+    if (worst > 0.35) { planksOffSteel++; offMax = Math.max(offMax, worst); }
+  }
+  const commonOverlap = girderRange(G.count - 1)[0] * -2;
+  quant.innerHTML = `
+    <div class="q-top">
+      <div><div class="q-title">Quantities · ${CONFIG.project.name}</div><div class="q-sub">${CONFIG.project.site} · ${CONFIG.project.owner} · precast plank deck on new ${G.section} steel (${CONFIG.project.engineer})</div></div>
+      <div style="margin-left:auto;display:flex;gap:8px"><button class="hbtn" onclick="window.print()">🖨 Print</button><button class="hbtn primary" id="quantClose">Close</button></div>
+    </div>
+    <div class="q-wrap">
+      <div class="q-card"><div class="q-tiles">
+        <div class="q-tile"><div class="v">${nStd + nSkew}</div><div class="k">precast planks (${nStd} standard${nSkew ? ` + ${nSkew} skew` : ''})</div></div>
+        <div class="q-tile"><div class="v">${curbN}</div><div class="k">precast curbs · ${fmtFtIn(curbLen)} each</div></div>
+        <div class="q-tile"><div class="v">${fmtN(totalCy, 1)} cy</div><div class="k">precast concrete</div></div>
+        <div class="q-tile"><div class="v">${fmtN((nStd * stdLf + nSkew * skewLf) * R.plf / 2000, 2)} t</div><div class="k">${R.label} reinforcing (${fmtN(nStd * stdLf + nSkew * skewLf)} lf)</div></div>
+        <div class="q-tile"><div class="v">${fmtN(pl.weight)} lb</div><div class="k">heaviest standard pick${precast ? ` · skew plank ${fmtN(sp.weight)} lb` : ''}</div></div>
+        <div class="q-tile"><div class="v">${hdN}</div><div class="k">hold-downs (tab + bolt + insert)</div></div>
+      </div></div>
+
+      <div class="q-card"><h3>Precast (ours)</h3><table class="q-table"><thead><tr><th>Item</th><th class="n">Qty</th><th>Each</th><th class="n">Total</th></tr></thead><tbody>
+        ${row(`Bridge plank ${fmtFtIn(P.w)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)}`, nStd, `${fmtN(stdVol / 27, 2)} cy · ${fmtN(pl.weight)} lb · ${stdBars} bars ${R.label} (${fmtN(stdLf)} lf)`, `${fmtN(nStd * stdVol / 27, 1)} cy · ${fmtN(nStd * pl.weight / 2000, 1)} t`)}
+        ${precast ? row(`Skew end plank ${fmtFtIn(E.minLength)} → ${fmtFtIn(E.minLength + 2 * halfW * tanSkew)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)}`, nSkew, `${fmtN(skewVol / 27, 2)} cy · ${fmtN(sp.weight)} lb · ${sp.rebar.bottomCount + sp.rebar.topCount} bars (${fmtN(skewLf)} lf)`, `${fmtN(nSkew * skewVol / 27, 1)} cy · ${fmtN(nSkew * sp.weight / 2000, 1)} t`) : ''}
+        ${row(`Curb ${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)}, ${fmtIn(C.haunch)} 45° top haunches`, curbN, `${fmtN(curbLen * curbArea / 27, 3)} cy · ${fmtN(curbWeight)} lb · (${C.dowel.count}) ${C.dowel.label}s`, `${fmtN(curbN * curbLen * curbArea / 27, 1)} cy · ${fmtN(curbN * curbWeight / 2000, 1)} t`)}
+        ${row(`${R.label} bar, bottom mat`, `${nStd} planks`, `${pl.rebar.bottomCount} bars · @ ${fmtIn(R.bottomLongOC)} long / @ ${fmtIn(R.bottomTransOC)} trans`, `${fmtN(nStd * pl.rebar.bottomLen)} lf`)}
+        ${row(`${R.label} bar, top mat`, `${nStd} planks`, `${pl.rebar.topCount} bars · @ ${fmtIn(R.topLongOC)} both ways`, `${fmtN(nStd * pl.rebar.topLen)} lf`)}
+      </tbody></table></div>
+
+      <div class="q-card"><h3>Cast-in and loose hardware</h3><table class="q-table"><thead><tr><th>Item</th><th class="n">Qty</th><th>Spec</th><th class="n">Note</th></tr></thead><tbody>
+        ${row('Plank pins (male)', pinsN, `${fmtIn(P.pins.dia)}Ø × ${fmtIn(P.pins.proj + P.pins.embed)} · ${P.pins.count} per plank edge`, 'cast in')}
+        ${row('Pin holes (female)', holesN, `${fmtIn(P.pins.holeDia)}Ø × ${fmtIn(P.pins.holeDepth)} formed`, 'cast in')}
+        ${row('Helicoil inserts', hdN, `${fmtIn(P.inserts.dia)}Ø × ${fmtIn(P.inserts.depth)} in the plank underside`, 'cast in')}
+        ${row('Hold-down tabs', hdN, `${fmtIn(H.tab.w)} × ${fmtIn(H.tab.l)} × ${fmtIn(H.tab.t)} galvanized plate with ${fmtIn(G.tf - 1 / 16 * IN)} welded stand-off`, 'loose')}
+        ${row('Hold-down bolts', hdN, `${fmtIn(H.bolt.dia)}Ø × ${fmtIn(H.bolt.len)} hex + washer`, 'loose')}
+        ${row(`${P.sleeves.label}s (sleeves)`, sleeveN, `2″ sch 40 PVC pipe, ${fmtIn(P.t)} long through the plank`, 'cast in')}
+        ${row('Curb dowels', sleeveN, `${C.dowel.label} × ${fmtIn(C.dowel.embed + P.t + C.dowel.projBelowPlank)} · ${fmtIn(C.dowel.embed)} embedded`, 'cast in curb')}
+        ${row('Dowel washers', sleeveN, `${fmtIn(C.washer.od)}Ø × ${fmtIn(C.washer.t)} · field welded below the plank`, 'field')}
+      </tbody></table></div>
+
+      <div class="q-card"><h3>Steel + bearings · by others (from the engineered plan)</h3><table class="q-table"><thead><tr><th>Item</th><th class="n">Qty</th><th>Spec</th><th class="n">Weight</th></tr></thead><tbody>
+        ${row(`Girder ${G.section} (Parts #5–#9)`, G.count, `${fmtFtIn(G.length)} long · ${fmtFtIn(G.spacing)} o.c. · stepped ${fmtFtIn(G.staggerPerBeam)} per girder for the skew`, `${fmtN(girderLb)} lb`)}
+        ${row(`${B.stub} stubs + ${fmtFtIn(B.plate.l)} × ${fmtFtIn(B.plate.w)} × ${fmtIn(B.plate.t)} base plates`, G.count * 2, 'Part #3 · slotted holes one end (thermal expansion, SD:3) · bronze slide plate (Part #4)', `≈${fmtN(stubLb + 10 * 110)} lb`)}
+        ${row(`Diaphragm ${D.section} (Part #10)`, diaphragms.length, `${fmtFtIn(D.length)} · ${diaphragmX.length} lines @ 15′-6″ · (${D.boltsPerEnd}) ¾″Ø A325 each end (Part #11 ×${diaphragms.length * D.boltsPerEnd * 2})`, `${fmtN(diaLb)} lb`)}
+        ${row('Anchor rods 1″Ø (Parts #1, #2)', G.count * 4, `${fmtFtIn(1 + 4 / 12)} / ${fmtFtIn(1 + 2 / 12)} · Hilti HIT-HY 200 · 5 ksi non-shrink grout`, '')}
+        ${row('Not needed with our deck', '—', 'Ø9/16″ top-flange holes + (110) ½″Ø × 7″ wedge anchors (Part #12), steel edge angles (Part #19), CIP wear surface (Part #18)', '')}
+      </tbody></table></div>
+
+      <div class="q-card"><h3>Deck geometry</h3><table class="q-table"><tbody>
+        ${row('Standard plank field', `${nStd} × ${fmtFtIn(P.w)}`, `${fmtFtIn(2 * deckHalfL)} long × ${fmtFtIn(P.l)} wide`, `${fmtN(2 * deckHalfL * P.l)} sf`)}
+        ${row('Deck end', '±' + fmtFtIn(E.enabled ? deckEndX : deckHalfL), !E.enabled ? `square end ${fmtFtIn(deckHalfL - A.faceX)} behind the abutment face at the centreline (${fmtFtIn(deckHalfL - A.faceX - halfW * tanSkew)} → ${fmtFtIn(deckHalfL - A.faceX + halfW * tanSkew)} across the skew)` : (precast ? 'skew planks bear on the field planks, the abutment top and the approach fill' : (endMode === 'cip' ? 'cast-in-place transition by others' : 'open — end treatment to be decided')), '')}
+        ${row('Clear width between curbs', fmtFtIn(P.l - 2 * (C.w + C.setback)), `engineer's plan: ${fmtFtIn(CONFIG.road.clearWidth)} clear · curbs ${fmtIn(C.h)} high`, '')}
+        ${row('Overhang past outer girder', fmtFtIn(halfW - girderZ(G.count - 1)), `${fmtFtIn(halfW - girderZ(G.count - 1) - G.bf / 2)} past the flange edge`, '')}
+        ${row('Skew', `${skewDeg.toFixed(1)}°`, `from the ${fmtFtIn(G.staggerPerBeam)} girder stagger on the plan (confirm with survey)`, '')}
+        ${row('Support check', planksOffSteel ? `${planksOffSteel} plank${planksOffSteel > 1 ? 's' : ''} past the steel` : 'all on steel', `girders are ${fmtFtIn(G.length)} long (all five overlap for ${fmtFtIn(commonOverlap)}) under an ${fmtFtIn(2 * deckHalfL)} square deck: ${planksOffSteel} planks run past a girder end by up to ${fmtFtIn(offMax)}${planksNoSteel ? ` and ${planksNoSteel} sit entirely off the steel` : ''} — those lengths bear on the abutment top (T.O. abutment = T.O. steel) and the compacted approach fill, like the engineer's end slabs. Confirm the approach bearing.`, '')}
+        ${row('Rebar levels from plank bottom', '', `long ${fmtIn(yBotLong)} · trans ${fmtIn(yBotTrans)} · top trans ${fmtIn(yTopTrans)} · top long ${fmtIn(yTopLong)} → ${fmtIn(topCoverActual)} top cover`, '')}
+      </tbody></table></div>
+
+      <div class="q-card"><h3>Assumptions to confirm</h3><ul class="q-note">
+        <li>Curbs: <b>${fmtFtIn(curbLen)}</b> long (${curbsPerPlankSide} per plank per side → <b>${curbN}</b>), <b>${fmtIn(C.w)}</b> wide assumed, outer face flush with the plank edge, ${fmtIn(C.haunch)} 45° haunches on the top edges for form release.</li>
+        <li>Hold-downs: a tab on <b>${H.layout === 'both' ? 'both sides' : 'alternating sides'}</b> of every interior girder under every plank${H.outerGirder === 'inner' ? ', inner lip only on the two outer girders (keeps the outer lip clear of the curb sleeves)' : ''} (${hdN} total). Tab ${fmtIn(H.tab.t)} thick with a welded stand-off so it levers against the ${fmtIn(G.tf)} flange; ${fmtIn(H.bolt.dia)}Ø bolt, ${fmtIn(P.inserts.depth)} insert.</li>
+        <li>Pins: ${P.pins.count} per joint at ${fmtFtIn(P.l / P.pins.count)} o.c., ${fmtIn(P.pins.proj)} projection. ${E.enabled ? `All ${nStd} standard planks are identical (pins one side, holes the other); the exposed pins/holes at the ends mate with the skew planks.` : `${nStd - 2} standard planks are identical (pins one side, holes the other); the two end planks are cast without pins/holes on their exposed edge.`}</li>
+        <li>Rebar: bottom mat main bars lowest, ${fmtIn(R.bottomCover)} + ${fmtIn(R.matGap)} + ${fmtIn(R.topCover)} as given leaves ${fmtIn(topCoverActual)} at the top of a ${fmtIn(P.t)} plank.</li>
+        <li>Curb dowels: ${C.dowel.label}s ${fmtIn(C.dowel.inset)} in from the outer face through 2″ sleeves; ${fmtIn(C.washer.od)}Ø washer welded under the plank. Welding to the dowel means the dowels should be <b>ASTM A706</b> (weldable) rather than A615.</li>
+        <li>Skew: ${skewDeg.toFixed(1)}° (girders step ${fmtFtIn(G.staggerPerBeam)}). ${E.enabled ? `The square plank field leaves a triangular gap at each abutment; shown here as two precast skew planks (${fmtFtIn(E.minLength)} short edge).` : `The ${fmtFtIn(2 * deckHalfL)} square deck simply runs past the skewed abutments; the triangle between the deck edge and the roadway is graded approach (by others).`} Confirm the end treatment and bearing on the abutment top / approach.</li>
+        <li>Wearing surface, cross-slope (the plan shows a 2% crown), guardrail and bridge markers are not modelled.</li>
+      </ul></div>
+    </div>`;
+  quant.querySelector('#quantClose').onclick = () => quant.classList.remove('open');
+}
+renderQuantities();
+document.getElementById('quantBtn').onclick = () => { renderQuantities(); quant.classList.add('open'); };
+const printCss = document.createElement('style');
+printCss.textContent = `@media print { @page { margin: 0.5in; } html, body { overflow: visible !important; height: auto !important; } #app, #labels, #header, #side, #dock, #infoCard, #isoBar, #caption, #tooltip, #camPill, #loading { display: none !important; } #quant { display: block !important; position: static; overflow: visible !important; height: auto !important; background: #fff; } .q-wrap { max-width: none; padding: 0; } .q-top { position: static; } .q-top button { display: none; } .q-card { break-inside: avoid; box-shadow: none; } }`;
+document.head.appendChild(printCss);
+
+// ============================================================
+// HEADER DIMS · MOBILE SHEET · RESIZE · LOOP
+// ============================================================
+function updateDims() {
+  document.getElementById('dimsLabel').textContent = `${P.count} planks ${fmtFtIn(P.w)} × ${fmtFtIn(P.l)} × ${fmtIn(P.t)}${E.enabled && endMode === 'precast' ? ' + 2 skew' : ''} · ${curbCountStd}${E.enabled && endMode === 'precast' ? '+' + curbCountSkew : ''} curbs · ${G.count} × ${G.section} @ ${fmtFtIn(G.spacing)} · ${fmtFtIn(G.length)} girders · ${skewDeg.toFixed(1)}° skew · ${CONFIG.project.rating}`;
+}
+updateDims();
+const side = document.getElementById('side');
+const menuBtn = document.getElementById('menuBtn');
+function setSheet(open) {
+  if (!isMobile) { side.classList.toggle('collapsed', !open); autoCollapsed = false; menuBtn.setAttribute('aria-expanded', open); return; }
+  side.classList.toggle('open', open);
+  menuBtn.setAttribute('aria-expanded', open);
+  side.inert = !open;
+  if (open) { infoCard.hidden = true; selected = null; applyHighlights(); }
+  updateViewOffset();
+}
+function closeSheet() { if (side.classList.contains('open')) setSheet(false); }
+menuBtn.onclick = () => setSheet(isMobile ? !side.classList.contains('open') : side.classList.contains('collapsed'));
+menuBtn.setAttribute('aria-expanded', String(!isMobile));
+if (isMobile) side.inert = true;
+// keep --dock-h equal to the real dock height (it changes with the mobile layout)
+const dockEl = document.getElementById('dock');
+new ResizeObserver(() => { document.documentElement.style.setProperty('--dock-h', dockEl.offsetHeight + 'px'); updateViewOffset(); }).observe(dockEl);
+document.querySelectorAll('#sideTabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#sideTabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('#side .sec').forEach(s => s.classList.toggle('active', s.dataset.panel === b.dataset.tab));
+});
+// On phones the bottom sheet / info card covers the lower part of the canvas: shift the view so the
+// model stays centred in the visible band between the header and whatever is open at the bottom.
+function updateViewOffset() {
+  const W = innerWidth, Hh = innerHeight;
+  if (!matchMedia('(max-width: 820px)').matches) { camera.clearViewOffset(); return; }
+  const headerH = document.getElementById('header').offsetHeight;
+  let bottom = document.getElementById('dock').offsetHeight;
+  if (side.classList.contains('open')) bottom += side.offsetHeight;
+  else if (!infoCard.hidden) bottom += infoCard.offsetHeight + 8;
+  const yOff = Math.round((bottom - headerH) / 2);
+  if (yOff > 0) camera.setViewOffset(W, Hh, 0, yOff, W, Hh); else camera.clearViewOffset();
+  invalidate();
+}
+const hint = document.getElementById('hint');
+let hintShown = false;
+function dismissHint() { if (hintShown) { hint.classList.remove('show'); hintShown = false; } }
+setTimeout(() => { hint.classList.add('show'); hintShown = true; setTimeout(dismissHint, 6500); }, 900);
+cv.addEventListener('pointerdown', dismissHint, { once: true });
+playBtn.addEventListener('click', dismissHint, { once: true });
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+  updateViewOffset(); invalidate();
+});
+updateViewOffset();
+applyVisibility();
+controls.addEventListener('change', invalidate);
+// Render on demand: a frame is drawn only when the camera, the timeline, a highlight or a layer changed.
+let frames = 0;
+function loop() {
+  requestAnimationFrame(loop);
+  const moved = camTween ? false : controls.update();
+  if (frames % 2 === 0) processHover();
+  if (needsRender || moved || frames < 3) {
+    needsRender = false;
+    renderer.render(scene, camera);
+    if (callouts.length) labelRenderer.render(scene, camera);
+    if (++frames === 2) document.getElementById('loading').classList.add('hide');
+  }
+}
+loop();
+setTimeout(() => { if (frames < 2 && window.showLoadError) window.showLoadError('The 3D scene is taking a long time to load. Check the connection and reload.'); }, 20000);
+window.HUBER = { CONFIG, parts, planks, curbs, holddowns, families, tl, isolate, exitIsolate, scene, camera, renderer };
+</script>
+</body>
+</html>
