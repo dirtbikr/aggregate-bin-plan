@@ -585,9 +585,9 @@ const CONFIG = {
     w: 12 * IN, h: 10 * IN,
     haunch: 1 * IN,        // 45° chamfer on the two top edges (equal legs) so the curb pops out of the form
     setback: 0,            // outer face set in from the plank edge
-    // count dowels are spread evenly from endInset in from each end (3 on a 4' curb → 12", 24", 36"); with 12" ends they
-    // land at 0 / ±12" from the plank centre, clear of the bottom bars (±3", ±9", ±15" …) and the top bars (±6", ±18")
-    dowel: { label: '#6 dowel', dia: 0.75 * IN, count: 3, inset: 4 * IN, endInset: 12 * IN, embed: 8 * IN, projBelowPlank: 2.5 * IN },
+    // count dowels are spread evenly between endInset from each end (3 on a 4' curb → 6", 24", 42" → 0 / ±18" on the
+    // plank). The plank's long rebar shifts itself along the plank to clear the sleeve lines (see clearOf()).
+    dowel: { label: '#6 dowel', dia: 0.75 * IN, count: 3, inset: 4 * IN, endInset: 6 * IN, embed: 8 * IN, projBelowPlank: 2.5 * IN },
     washer: { od: 3 * IN, t: 0.25 * IN },
     weldColor: 0xff7a1a,
   },
@@ -1043,6 +1043,20 @@ function tabX(worldX, reg, k, preferredLocal) {
 
 // dowel positions along a curb, relative to its centre
 const dowelXs = () => { const n = Math.max(1, C.dowel.count), a = curbLen / 2 - C.dowel.endInset; return n === 1 ? [0] : Array.from({ length: n }, (_, i) => -a + i * (2 * a) / (n - 1)); };
+// Shift a symmetric bar layout along the plank (staying inside the edge cover) so the bars keep the most
+// clearance from the curb-sleeve lines. Returns the bar positions.
+function clearOf(width, oc, cover, avoid) {
+  const base = positionsSym(width, oc, cover);
+  if (!avoid.length) return base;
+  let best = base, bestClr = -1;
+  for (let sh = -oc / 2; sh <= oc / 2 + 1e-9; sh += 0.5 * IN) {
+    const pos = base.map(x => x + sh);
+    if (pos[0] < -width / 2 + cover - 1e-9 || pos[pos.length - 1] > width / 2 - cover + 1e-9) continue;
+    const clr = Math.min(...pos.map(x => Math.min(...avoid.map(a => Math.abs(x - a)))));
+    if (clr > bestClr + 1e-9) { bestClr = clr; best = pos; }
+  }
+  return best;
+}
 const stdGeoCache = {};
 function buildPlank(spec) {
   const { reg, worldX } = spec;
@@ -1062,12 +1076,12 @@ function buildPlank(spec) {
   const edges = new THREE.LineSegments(edgeGeo, M.edge);
   edges.userData.edge = true;
   g.add(edges);
-  // rebar
+  // rebar (the standard plank's long bars dodge the curb-sleeve lines)
+  const sleeveXs = [...new Set(spec.curbSlots.flatMap(sl => dowelXs().map(dx => Math.round((sl.x + dx) * 1e4) / 1e4)))];
   const xsLong = isSkew
     ? { bottom: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.bottomLongOC),
         top: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.topLongOC) }
-    // top-mat long bars at ±6" / ±18" clear the curb-sleeve lines at 0 / ±12"
-    : { bottom: positionsSym(P.w, R.bottomLongOC, R.edgeCover), top: positionsSym(P.w, R.topLongOC, R.edgeCover) };
+    : { bottom: clearOf(P.w, R.bottomLongOC, R.edgeCover, sleeveXs), top: clearOf(P.w, R.topLongOC, R.edgeCover, sleeveXs) };
   const rb = isSkew ? plankRebar(reg, { xPositions: xsLong }) : (cache.rebar ||= plankRebar(reg, { xPositions: xsLong }));
   const botMesh = mesh(rb.bottomGeo, M.rebarBottom, { cast: false, hover: { title: 'Bottom rebar mat', sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. with the length · ${R.label} @ ${fmtIn(R.bottomTransOC)} o.c. across · ${fmtIn(R.bottomCover)} bottom cover` } });
   const topMesh = mesh(rb.topGeo, M.rebarTop, { cast: false, hover: { title: 'Top rebar mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} o.c. both ways · ${fmtIn(R.matGap)} clear above the bottom mat · ${fmtIn(topCoverActual)} top cover` } });
