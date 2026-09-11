@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>8′ ATV Bridge — 90′ span · 9′ face × 6′ wings · 8′ timber deck on two W30 girders</title>
+<title>8′ ATV Bridge — 90′ span · 9′ face × 6′ wings · 8′ 2×6 deck, tread runners, 6×6 curbs on two W30 girders</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -331,7 +331,7 @@
 
 <div id="header">
   <h1>8′ ATV Bridge</h1>
-  <div class="dims" id="dimsLabel">9' clear face × 8' tall · 6' wings to 11' · 2 girders on pads @ 6' o.c. · 8' 6×8 deck</div>
+  <div class="dims" id="dimsLabel">9' clear face × 8' tall · 6' wings to 11' · 2 girders on pads @ 6' o.c. · 8' 2×6 deck @ 4" gaps + 2×6 tread runners · 6×6 curbs &amp; rail</div>
   <div class="stack">corner rounds zipper the face into the wings, course by course</div>
   <button id="pickListBtn" aria-label="Delivery pick list">📋 <span class="pl-btn-text">Pick List</span></button>
   <button id="uiToggle" aria-label="Show or hide panels">☰</button>
@@ -411,8 +411,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 //
 //        cap (C4 top)  ....  8'-0"
 //        + 30" girder  .... 10'-6"
-//        + 6" timber   .... 11'-0"   ← deck surface
-//        wings: C5 (2') → 10'-0", C6 half block (1') → 11'-0"  ✓ flush
+//        + 1½" 2×6 deck .... 10'-7½"
+//        + 1½" runners  .... 10'-9"    ← tread surface
+//        wings: C5 (2') → 10'-0", C6 half block (1') → 11'-0"
+//        + 12" curb (2 × 6×6) .. 11'-7½"
+//        + 6×6 rail     .... 12'-1½"   ← rail top
+//        ⚠ the 3" timber stack no longer fills the 36" saddle: the tread
+//          surface runs 3" BELOW the wing tops (the old 6×8 deck was flush).
 //
 // Coordinate system:
 //   Origin = grade, centered on the wall's front face.
@@ -447,7 +452,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // casting that exists, so the square block is what caps the corner.
 //
 // The 9' clear opening between the rounds sets the channel; the 8'-0" deck
-// timbers sit centred in it with 6" to spare at each corner round.
+// boards sit centred in it with 6" to spare at each corner round.
 
 const COURSE_H  = 2;        // standard course height (ft)
 const HALF_H    = 1;        // half-block flat-top course (ft)
@@ -485,10 +490,11 @@ const MPLATE_X = 16 / 12, MPLATE_Z = 14 / 12, MPLATE_T = 1 / 12;   // masonry pl
 const PAD_X    = 12 / 12, PAD_Z    = 12 / 12, PAD_T    = 1.5 / 12; // elastomeric bearing pad
 const SPLATE_X = 14 / 12, SPLATE_Z = 14 / 12, SPLATE_T = 0.5 / 12; // sole plate, welded to the flange
 
-// The 36" from cap to wing top is fully spent by the 30" girder and the 6" deck,
-// so the bearing stack has to come out of the cap: the C4 face course is cast
-// SEAT_DROP low, and pad + sole plate bring the girder soffit back to 8'-0".
-// Everything above is unchanged and the deck still finishes flush with the wings.
+// The bearing stack comes out of the cap: the C4 face course is cast SEAT_DROP
+// low, and pad + sole plate bring the girder soffit back to 8'-0". This was
+// sized for a 6" deck finishing flush with the wings at 11'-0"; with the 3"
+// 2×6 deck + runner stack the tread surface now lands at 10'-9", 3" below the
+// wing tops. The seat is left as-is — see the CONFIG header.
 const SEAT_DROP = PAD_T + SPLATE_T;        // 2"
 
 const CAP_Y  = 4 * COURSE_H;               // girder soffit / nominal cap level, y = 8
@@ -508,20 +514,101 @@ const SLAB_H   = BEAM_Y - SEAT_Y;          // seat up to the deck soffit — 2'-
 // clearance held to each wing face, perpendicular — ≈1.08"
 const SLAB_GAP = ((PIVOT_X - 1 - Math.SQRT2) + (WALL_T - SLAB_T) - SLAB_W_F / 2) / Math.SQRT2;
 
-// Deck: rough-sawn full-dimension 6"×8" timbers, 8'-0" long, laid flat and
-// transverse — the 8' length spans the clear opening in one piece, the true 6"
-// thickness fills the 36" saddle left over after the 30" girders.
+// Deck: 2×6 support planks, 8'-0" long, laid flat and transverse across the two
+// girders with a 4" open gap between boards — the 8' length spans the clear
+// opening in one piece. Dimensions are ACTUAL (nominal 2×6 = 1½" × 5½"); set
+// PLANK_W / PLANK_T to 6/12 and 2/12 if the boards come rough-sawn full size.
 const PLANK_LEN   = 8;          // 8'-0" — one board spans the deck width
-const PLANK_W     = 8 / 12;     // 8" — laid flat, tiling along the span
-const PLANK_T     = 6 / 12;     // 6" — full rough-sawn thickness
-const PLANK_GAP   = 0.5 / 12;   // 1/2" drainage gap between boards
+const PLANK_W     = 5.5 / 12;   // 5½" — laid flat, tiling along the span
+const PLANK_T     = 1.5 / 12;   // 1½" — laid flat
+const PLANK_GAP   = 4 / 12;     // 4" open gap between planks
 const PLANK_PITCH = PLANK_W + PLANK_GAP;
 // The deck runs back-of-wall to back-of-wall: the girders no longer reach the
 // back of the seat, so the last 8" at each end lands on top of the closure slab.
 const deckLen     = (span) => span + 2 * SLAB_T;
 const plankCount  = (span) => Math.floor((deckLen(span) + PLANK_GAP) / PLANK_PITCH + 1e-9);
-const deckFront   = (span) => WALL_T - (deckLen(span) - (plankCount(span) * PLANK_PITCH - PLANK_GAP)) / 2;
+const plankField  = (span) => plankCount(span) * PLANK_PITCH - PLANK_GAP;   // first plank front to last plank back
+const deckFront   = (span) => WALL_T - (deckLen(span) - plankField(span)) / 2;
 const N_PLANKS    = plankCount(SPAN);   // ORDER quantity — never follows the view span
+
+// Tread runners: 2×6 laid flat on top of the planks, running WITH the span
+// (perpendicular to the planks) so the tires roll along continuous wood instead
+// of across 4" gaps. Two tread paths, one per tire line, each RUN_ROWS boards
+// wide with a 1" drainage gap between boards, and TREAD_CLEAR of open deck
+// between the two paths. Runners come in RUN_LEN sticks butted end to end;
+// alternate rows start with a half stick so the joints stagger. Land every
+// butt joint on a plank.
+const RUN_W       = 5.5 / 12;   // 5½" — same 2×6 stock as the planks
+const RUN_T       = 1.5 / 12;   // 1½"
+const RUN_GAP     = 1 / 12;     // 1" between tread boards — lets water and snow through
+const RUN_ROWS    = 4;          // boards per tread path
+const RUN_LEN     = 16;         // stock length, ft
+const TREAD_CLEAR = 2;          // open deck between the two tread paths, ft
+const TREAD_W     = RUN_ROWS * RUN_W + (RUN_ROWS - 1) * RUN_GAP;   // 25" per path
+// Row centrelines, both paths, inside edge at ±TREAD_CLEAR/2. Outer edge lands
+// at ±(12 + 25)" = ±37" on the 96" deck, so both paths ride over the girders.
+const RUN_XS = [];
+for (let j = 0; j < RUN_ROWS; j++) {
+  const off = TREAD_CLEAR / 2 + j * (RUN_W + RUN_GAP) + RUN_W / 2;
+  RUN_XS.push(-off, off);
+}
+// Cut list for one row: pieces front to back over the plank field.
+function runnerPieces(span, stagger) {
+  const L = plankField(span), out = [];
+  let z = 0;
+  if (stagger) { const p = Math.min(RUN_LEN / 2, L); out.push(p); z += p; }
+  while (L - z > 1e-9) { const p = Math.min(RUN_LEN, L - z); out.push(p); z += p; }
+  return out;
+}
+// Sticks to order for a list of cut pieces: every full-length piece is a
+// stick; the short ones are packed first-fit-decreasing into as few sticks as
+// they will share.
+function sticksFor(pieces, stock) {
+  const cuts = [];
+  let sticks = 0;
+  pieces.forEach(p => { if (p >= stock - 1e-9) sticks++; else cuts.push(p); });
+  cuts.sort((a, b) => b - a);
+  const bins = [];
+  cuts.forEach(c => {
+    const b = bins.findIndex(rem => rem >= c - 1e-9);
+    if (b < 0) bins.push(stock - c); else bins[b] -= c;
+  });
+  return sticks + bins.length;
+}
+const N_RUNNERS   = sticksFor(RUN_XS.flatMap((_, r) => runnerPieces(SPAN, r % 2 === 1)), RUN_LEN);   // ORDER quantity — 16' sticks
+const RUN_LF      = RUN_XS.length * plankField(SPAN);   // linear feet of runner in place
+const DECK_TOP    = PLANK_T + RUN_T;         // timber stack above the girders — 3"
+
+// Curbs and guard rail: along each deck edge, a curb block — two 6"×6"×2'-0"
+// pieces stacked, 12" tall — every CURB_PITCH, with a 6×6 rail laid on top of
+// the blocks. The rail comes in RAIL_LEN sticks; the blocks are set so every
+// rail joint lands centred on a block, and a block closes each end of the
+// deck so the rail ends are carried too. The last bay is whatever is left.
+// 6×6 is taken at the full 6" (rough-sawn) — set CURB_S to 5.5/12 for S4S.
+const CURB_S      = 6 / 12;     // 6" square section
+const CURB_LEN    = 2;          // 2'-0" block
+const CURB_STACK  = 2;          // pieces per block, stacked — 12" curb
+const CURB_PITCH  = 12;         // "every 12 ish feet"
+const RAIL_LEN    = 12;         // rail stock — one bay per stick, joints on the blocks
+const CURB_X      = PLANK_LEN / 2 - CURB_S / 2;   // outer face flush with the deck edge, ±3'-9"
+// Block centres from the plank-field front, one side.
+function curbCentres(span) {
+  const L = plankField(span), c = [CURB_LEN / 2];
+  for (let z = CURB_PITCH; z < L - CURB_LEN - 1e-9; z += CURB_PITCH) c.push(z);
+  c.push(L - CURB_LEN / 2);
+  return c;
+}
+// Rail pieces front to back, one side: full sticks then the short closer.
+function railPieces(span) {
+  const L = plankField(span), out = [];
+  let z = 0;
+  while (L - z > 1e-9) { const p = Math.min(RAIL_LEN, L - z); out.push(p); z += p; }
+  return out;
+}
+const N_CURBS   = 2 * curbCentres(SPAN).length;              // blocks (stacks), both sides
+const N_CURB_PC = N_CURBS * CURB_STACK;                      // ORDER quantity — 6×6×2' pieces
+const N_RAILS   = sticksFor([...railPieces(SPAN), ...railPieces(SPAN)], RAIL_LEN);   // ORDER quantity — 12' sticks
+const RAIL_TOP  = PLANK_T + CURB_STACK * CURB_S + CURB_S;    // rail top above the girders — 1'-7½"
 
 // ── Drawn span (view only) ──
 // 90' of bridge is unmanageable on a phone, so the model opens foreshortened:
@@ -740,7 +827,7 @@ const textTexture = createTextTexture();
 // ── Rough-sawn timber ──────────────────────────────────────────
 // Flat-sawn hemlock: pale straw ground, wandering grain bands, a knot or two,
 // and the faint arc marks a circular mill leaves across the board. Six seeded
-// variants get shared out across the deck so 127 boards don't repeat visibly
+// variants get shared out across the deck so 100-odd boards don't repeat visibly
 // while the page still only uploads six textures to the GPU.
 function createWoodTexture(seed) {
   const rnd = mulberry32(seed);
@@ -1180,7 +1267,8 @@ beamGroup.visible = state.beams;
 buildSlabs();
 
 // ============================================================
-// TIMBER DECK — 6"×8" rough-sawn, 8' long, laid flat and transverse.
+// TIMBER DECK — 2×6 planks, 8' long, laid flat and transverse at 4" gaps,
+// with two 4-board 2×6 tread paths running the span on top of them.
 // ============================================================
 const deckGroup = new THREE.Group();
 scene.add(deckGroup);
@@ -1205,6 +1293,15 @@ const PLANK_MATS = (() => {
   }
   return sets;
 })();
+// Runner sticks are twice the length of a plank, so their grain texture is
+// tiled twice along the board instead of stretched.
+const RUNNER_MATS = PLANK_MATS.map(set => {
+  const tex = set[2].map.clone();
+  tex.repeat.set(2, 1);
+  tex.needsUpdate = true;
+  const face = set[2].clone(); face.map = tex;
+  return [set[0], set[1], face, face, face, face];
+});
 
 function buildDeck() {
   while (deckGroup.children.length) deckGroup.remove(deckGroup.children[0]);
@@ -1223,6 +1320,62 @@ function buildDeck() {
     deckGroup.add(plank);
     deckPlanks.push(plank);
   }
+  // Tread runners on top, piece by piece so the staggered butt joints show.
+  // Each piece is built along X and turned 90° so its sawn ends face ±Z and
+  // the grain runs with the span.
+  const runY = DECK_Y + PLANK_T + RUN_T / 2;
+  let k = 0;
+  RUN_XS.forEach((x, r) => {
+    let z = z0;
+    runnerPieces(drawnSpan, r % 2 === 1).forEach(len => {
+      const geo = new THREE.BoxGeometry(len, RUN_T, RUN_W);
+      const run = new THREE.Mesh(geo, RUNNER_MATS[(k * 7 + 3) % RUNNER_MATS.length]);
+      run.position.set(x + (rnd() - 0.5) * 0.01, runY + (rnd() - 0.5) * 0.006, z - len / 2);
+      run.rotation.y = Math.PI / 2 + (rnd() - 0.5) * 0.002;
+      run.castShadow = true;
+      run.receiveShadow = true;
+      run.userData = { spec: { type: 'runner', section: 'deck', isRunner: true, len } };
+      run.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), plankEdgeMat));
+      deckGroup.add(run);
+      deckPlanks.push(run);
+      z -= len;
+      k++;
+    });
+  });
+  // Curb blocks and rail along each edge, sitting on the planks (not the runners).
+  const curbGeo = new THREE.BoxGeometry(CURB_LEN, CURB_S, CURB_S);
+  const curbEdge = new THREE.EdgesGeometry(curbGeo);
+  [-CURB_X, CURB_X].forEach(x => {
+    curbCentres(drawnSpan).forEach(c => {
+      for (let t = 0; t < CURB_STACK; t++) {
+        const blk = new THREE.Mesh(curbGeo, PLANK_MATS[(k * 5 + 1) % PLANK_MATS.length]);
+        blk.position.set(x + (rnd() - 0.5) * 0.01, DECK_Y + PLANK_T + CURB_S * (t + 0.5), z0 - c);
+        blk.rotation.y = Math.PI / 2 + (rnd() - 0.5) * 0.004;
+        blk.castShadow = true;
+        blk.receiveShadow = true;
+        blk.userData = { spec: { type: 'curb', section: 'deck', isCurb: true } };
+        blk.add(new THREE.LineSegments(curbEdge, plankEdgeMat));
+        deckGroup.add(blk);
+        deckPlanks.push(blk);
+        k++;
+      }
+    });
+    let z = z0;
+    railPieces(drawnSpan).forEach(len => {
+      const geo = new THREE.BoxGeometry(len, CURB_S, CURB_S);
+      const rail = new THREE.Mesh(geo, RUNNER_MATS[(k * 7 + 5) % RUNNER_MATS.length]);
+      rail.position.set(x + (rnd() - 0.5) * 0.008, DECK_Y + PLANK_T + CURB_STACK * CURB_S + CURB_S / 2, z - len / 2);
+      rail.rotation.y = Math.PI / 2 + (rnd() - 0.5) * 0.002;
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      rail.userData = { spec: { type: 'rail', section: 'deck', isRail: true, len } };
+      rail.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), plankEdgeMat));
+      deckGroup.add(rail);
+      deckPlanks.push(rail);
+      z -= len;
+      k++;
+    });
+  });
 }
 buildDeck();
 deckGroup.visible = state.deck;
@@ -1259,7 +1412,7 @@ const spanLabel = (() => {
 })();
 function placeSpanLabel() {
   spanLabel.visible = state.shortSpan && state.opposing;
-  spanLabel.position.set(0, DECK_Y + PLANK_T + 3.5 + (state.exploded ? 3 * EXPLODE_GAP : 0), midZ);
+  spanLabel.position.set(0, DECK_Y + RAIL_TOP + 3 + (state.exploded ? 3 * EXPLODE_GAP : 0), midZ);
 }
 
 // Build the wall now that the deck/beam groups exist (updateLayout moves them).
@@ -1302,7 +1455,10 @@ function updateLegend() {
 
   const nWalls = state.opposing ? 2 : 1;
   const deckLine = state.deck
-    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck timbers (6×8 rough, ${PLANK_LEN}′)</span><span class="count">${N_PLANKS}</span></div>`
+    ? `<div class="legend-subtotal" style="margin-top:8px"><span>Deck planks (2×6 × ${PLANK_LEN}′ · ${inches(PLANK_GAP)} gaps)</span><span class="count">${N_PLANKS}</span></div>`
+      + `<div class="legend-subtotal"><span>Tread runners (2×6 × ${RUN_LEN}′ · 2 paths × ${RUN_ROWS} wide)</span><span class="count">${N_RUNNERS}</span></div>`
+      + `<div class="legend-subtotal"><span>Curb blocks (6×6 × ${CURB_LEN}′ · ${CURB_STACK} high @ ${CURB_PITCH}′)</span><span class="count">${N_CURB_PC}</span></div>`
+      + `<div class="legend-subtotal"><span>Guard rail (6×6 × ${RAIL_LEN}′)</span><span class="count">${N_RAILS}</span></div>`
     : '';
   const beamLine = state.beams
     ? `<div class="legend-subtotal"${state.deck ? '' : ' style="margin-top:8px"'}><span>Girders (${SPAN}′ · ${inches(BEAM_DEPTH)} × ${inches(BEAM_FLANGE)})</span><span class="count">${BEAM_XS.length}</span></div>`
@@ -1548,7 +1704,13 @@ renderer.domElement.addEventListener('pointermove', e => {
       } else if (s.isSlab) {
         tooltip.innerHTML = `<strong>Closure slab</strong> · ${ftin(SLAB_W_F)} front / ${ftin(SLAB_W_B)} back · ${inches(SLAB_H)} × ${inches(SLAB_T)} · 45° ends`;
       } else if (s.isPlank) {
-        tooltip.innerHTML = `<strong>Deck timber</strong> · 6″ × 8″ rough-sawn · ${PLANK_LEN}′-0″ · laid flat`;
+        tooltip.innerHTML = `<strong>Deck plank</strong> · 2×6 (${inches(PLANK_T)} × ${inches(PLANK_W)}) · ${PLANK_LEN}′-0″ · laid flat · ${inches(PLANK_GAP)} gap`;
+      } else if (s.isRunner) {
+        tooltip.innerHTML = `<strong>Tread runner</strong> · 2×6 laid flat on the planks · ${ftin(s.len)} piece · ${RUN_ROWS} wide per path · ${inches(RUN_GAP)} gaps · ${ftin(TREAD_CLEAR)} between paths`;
+      } else if (s.isCurb) {
+        tooltip.innerHTML = `<strong>Curb block</strong> · 6″ × 6″ × ${ftin(CURB_LEN)} · ${CURB_STACK} stacked, ${inches(CURB_STACK * CURB_S)} tall · every ${CURB_PITCH}′ · outer face flush with the deck edge`;
+      } else if (s.isRail) {
+        tooltip.innerHTML = `<strong>Guard rail</strong> · 6″ × 6″ · ${ftin(s.len)} piece on the curb blocks · joints land on a block`;
       } else {
         const sectionLabel = s.section === 'face' ? 'Face Wall'
           : s.section === 'wing-L' ? 'Left Wing' : 'Right Wing';
@@ -1644,8 +1806,15 @@ function loadLines(load) {
 }
 
 // Steel and timber — ships separately from the block loads.
-const PLANK_BF = (6 * 8 * (PLANK_LEN * 12)) / 144;          // board feet per timber (28)
-const PLANK_LB = PLANK_LEN * PLANK_W * PLANK_T * 36;        // green hemlock ≈ 36 pcf
+const TIMBER_PCF = 30;                                      // 2×6 hemlock/SPF, air-dry-ish
+const PLANK_BF = (2 * 6 * (PLANK_LEN * 12)) / 144;          // nominal board feet per plank (8)
+const PLANK_LB = PLANK_LEN * PLANK_W * PLANK_T * TIMBER_PCF;
+const RUN_BF   = (2 * 6 * (RUN_LEN * 12)) / 144;            // nominal board feet per 16' stick (16)
+const RUN_LB   = RUN_LEN * RUN_W * RUN_T * TIMBER_PCF;
+const CURB_BF  = (6 * 6 * (CURB_LEN * 12)) / 144;           // board feet per 6×6×2' (6)
+const CURB_LB  = CURB_LEN * CURB_S * CURB_S * 36;           // green 6×6 ≈ 36 pcf
+const RAIL_BF  = (6 * 6 * (RAIL_LEN * 12)) / 144;           // board feet per 6×6×12' (36)
+const RAIL_LB  = RAIL_LEN * CURB_S * CURB_S * 36;
 const MATERIALS = [
   { name: `Girder — ${SPAN}′ · ${inches(BEAM_DEPTH)} deep × ${inches(BEAM_FLANGE)} flange`,
     qty: BEAM_XS.length, note: `≈ ${fmtLb(116 * SPAN)} lb each at 116 lb/ft — confirm the actual section` },
@@ -1657,8 +1826,14 @@ const MATERIALS = [
     qty: BEAM_XS.length * 2, note: 'welded to the bottom flange · round holes at abutment A (fixed), slotted at B (expansion)' },
   { name: `Closure slab — ${ftin(SLAB_W_F)} front / ${ftin(SLAB_W_B)} back × ${inches(SLAB_H)} × ${inches(SLAB_T)} precast`,
     qty: 2, note: `45° ends poured parallel to the wings — ≈${(SLAB_GAP * 12).toFixed(1)}″ clear each side, uniform full depth · ≈${fmtLb((SLAB_W_F + SLAB_W_B) / 2 * SLAB_T * SLAB_H * 150)} lb each · stands in the back 8″ of the seat, tied to the girder ends` },
-  { name: `Deck timber — 6″ × 8″ rough-sawn, ${PLANK_LEN}′-0″`,
-    qty: N_PLANKS, note: `${fmtLb(N_PLANKS * PLANK_BF)} bd ft · ≈ ${fmtLb(N_PLANKS * PLANK_LB)} lb green · ½″ gap between boards` },
+  { name: `Deck plank — 2×6 × ${PLANK_LEN}′-0″, laid flat across the girders`,
+    qty: N_PLANKS, note: `${fmtLb(N_PLANKS * PLANK_BF)} bd ft · ≈ ${fmtLb(N_PLANKS * PLANK_LB)} lb · ${inches(PLANK_GAP)} open gap between planks · 1′ overhang past each girder` },
+  { name: `Tread runner — 2×6 × ${RUN_LEN}′-0″, laid flat on the planks along the span`,
+    qty: N_RUNNERS, note: `${fmtLb(N_RUNNERS * RUN_BF)} bd ft · ≈ ${fmtLb(N_RUNNERS * RUN_LB)} lb · ${RUN_XS.length} rows × ${ftin(plankField(SPAN))} = ${fmtLb(RUN_LF)} lin ft · two ${inches(TREAD_W)} paths, ${RUN_ROWS} boards wide at ${inches(RUN_GAP)} gaps, ${ftin(TREAD_CLEAR)} clear between paths · alternate rows start with a half stick so joints stagger — land every joint on a plank` },
+  { name: `Curb block — 6″ × 6″ × ${ftin(CURB_LEN)}`,
+    qty: N_CURB_PC, note: `${fmtLb(N_CURB_PC * CURB_BF)} bd ft · ≈ ${fmtLb(N_CURB_PC * CURB_LB)} lb · ${N_CURBS} blocks of ${CURB_STACK} stacked (${inches(CURB_STACK * CURB_S)} tall), ${N_CURBS / 2} per side · one at each deck end, then every ${CURB_PITCH}′ · outer face flush with the deck edge, sitting on the planks` },
+  { name: `Guard rail — 6″ × 6″ × ${RAIL_LEN}′-0″, on the curb blocks`,
+    qty: N_RAILS, note: `${fmtLb(N_RAILS * RAIL_BF)} bd ft · ≈ ${fmtLb(N_RAILS * RAIL_LB)} lb · ${ftin(plankField(SPAN))} per side · every joint lands centred on a curb block, the last piece is cut to close the bay` },
 ];
 
 const pickListEl = document.getElementById('pickList');
@@ -1730,7 +1905,7 @@ function renderPickList() {
         <div class="pl-summary-line" style="margin-top:4px">Taken to date: <strong>${takenCount}</strong> blocks (${extraCount} extra) · Left to take: <strong>${remaining.length}</strong> blocks · <strong>${fmtLb(remainingLb)}</strong> lb in ${loads.length} loads</div>
         <div class="pl-progress"><div class="pl-progress-fill" style="width:${gotPct}%"></div></div>
         <div class="pl-progress-text">${filled + gotBlocks} of ${totalBlocks} block positions covered · ${gotPct}%</div>
-        <div class="pl-note">Loads run in build order, C1 up, so a truck can be unloaded straight into the course being laid. Tick rows as they come off the yard. The <strong>2′ flat-tops with bearing plates</strong>, the <strong>4′ flat-top</strong> and the <strong>1′ half blocks</strong> are their own castings: pull them specifically, they are not interchangeable with the studded stock. Girders, plates and deck timber ship separately.</div>
+        <div class="pl-note">Loads run in build order, C1 up, so a truck can be unloaded straight into the course being laid. Tick rows as they come off the yard. The <strong>2′ flat-tops with bearing plates</strong>, the <strong>4′ flat-top</strong> and the <strong>1′ half blocks</strong> are their own castings: pull them specifically, they are not interchangeable with the studded stock. Girders, plates, 2×6 deck stock and 6×6 curb stock ship separately.</div>
         <button class="pl-reset">Reset checklist</button>
       </div>
       <div class="pl-summary">
