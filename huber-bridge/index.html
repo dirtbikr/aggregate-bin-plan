@@ -572,7 +572,7 @@ const CONFIG = {
     },
     pins: { count: 4, dia: 0.75 * IN, proj: 3 * IN, embed: 6 * IN, holeDia: 0.875 * IN, holeDepth: 3.5 * IN },
     inserts: { label: 'Helicoil insert', dia: 1.0 * IN, depth: 1.5 * IN },
-    sleeves: { label: 'PVC channel', od: 2.375 * IN, id: 2.047 * IN },  // 2" sch 40 PVC pipe cast through the plank
+    sleeves: { label: 'PVC channel', nominal: '1½″', od: 1.9 * IN, id: 1.61 * IN },  // 1-1/2" sch 40 PVC pipe cast through the plank (the #6 dowel drops through the 1.61" bore)
   },
   holddown: {
     layout: 'both',        // 'both' = a tab each side of every girder flange · 'alternate' = one per girder, alternating sides
@@ -581,11 +581,13 @@ const CONFIG = {
     bolt: { dia: 0.75 * IN, len: 3.5 * IN, headH: 0.5 * IN, headAF: 1.125 * IN, washerOD: 1.5 * IN, washerT: 0.125 * IN },
   },
   curb: {
-    len: 2,                // curb segment length along the bridge (2 per plank per side → 80 over 20 planks)
+    len: 4,                // curb segment length along the bridge (1 per plank per side → 40 over 20 planks)
     w: 12 * IN, h: 10 * IN,
     haunch: 1 * IN,        // 45° chamfer on the two top edges (equal legs) so the curb pops out of the form
     setback: 0,            // outer face set in from the plank edge
-    dowel: { label: '#6 dowel', dia: 0.75 * IN, count: 2, inset: 4 * IN, endInset: 6 * IN, embed: 8 * IN, projBelowPlank: 2.5 * IN },
+    // count dowels are spread evenly from endInset in from each end (3 on a 4' curb → 12", 24", 36"); with 12" ends they
+    // land at 0 / ±12" from the plank centre, clear of the bottom bars (±3", ±9", ±15" …) and the top bars (±6", ±18")
+    dowel: { label: '#6 dowel', dia: 0.75 * IN, count: 3, inset: 4 * IN, endInset: 12 * IN, embed: 8 * IN, projBelowPlank: 2.5 * IN },
     washer: { od: 3 * IN, t: 0.25 * IN },
     weldColor: 0xff7a1a,
   },
@@ -1039,6 +1041,8 @@ function tabX(worldX, reg, k, preferredLocal) {
   return Math.min(hi, Math.max(lo, worldX + preferredLocal)) - worldX;
 }
 
+// dowel positions along a curb, relative to its centre
+const dowelXs = () => { const n = Math.max(1, C.dowel.count), a = curbLen / 2 - C.dowel.endInset; return n === 1 ? [0] : Array.from({ length: n }, (_, i) => -a + i * (2 * a) / (n - 1)); };
 const stdGeoCache = {};
 function buildPlank(spec) {
   const { reg, worldX } = spec;
@@ -1062,8 +1066,8 @@ function buildPlank(spec) {
   const xsLong = isSkew
     ? { bottom: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.bottomLongOC),
         top: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.topLongOC) }
-    // top-mat long bars sit half a spacing in from the edge so they clear the curb-sleeve lines at ±6" / ±18"
-    : { bottom: positionsSym(P.w, R.bottomLongOC, R.edgeCover), top: positionsSym(P.w, R.topLongOC, R.edgeCover + R.topLongOC / 2) };
+    // top-mat long bars at ±6" / ±18" clear the curb-sleeve lines at 0 / ±12"
+    : { bottom: positionsSym(P.w, R.bottomLongOC, R.edgeCover), top: positionsSym(P.w, R.topLongOC, R.edgeCover) };
   const rb = isSkew ? plankRebar(reg, { xPositions: xsLong }) : (cache.rebar ||= plankRebar(reg, { xPositions: xsLong }));
   const botMesh = mesh(rb.bottomGeo, M.rebarBottom, { cast: false, hover: { title: 'Bottom rebar mat', sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. with the length · ${R.label} @ ${fmtIn(R.bottomTransOC)} o.c. across · ${fmtIn(R.bottomCover)} bottom cover` } });
   const topMesh = mesh(rb.topGeo, M.rebarTop, { cast: false, hover: { title: 'Top rebar mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} o.c. both ways · ${fmtIn(R.matGap)} clear above the bottom mat · ${fmtIn(topCoverActual)} top cover` } });
@@ -1089,14 +1093,14 @@ function buildPlank(spec) {
   // curb slots → PVC sleeves (2 per curb)
   const slots = spec.curbSlots;
   const tubeGeos = [], holeGeos = [], dowelPts = [];
-  for (const sl of slots) for (const sx of [-1, 1]) {
-    const x = sl.x + sx * (curbLen / 2 - C.dowel.endInset), z = sl.side * (halfW - C.setback - C.dowel.inset);
+  for (const sl of slots) for (const dx of dowelXs()) {
+    const x = sl.x + dx, z = sl.side * (halfW - C.setback - C.dowel.inset);
     dowelPts.push({ x, z, side: sl.side });
     tubeGeos.push(cylG(P.sleeves.od / 2, P.t + 0.006, 'y', x, P.t / 2, z, 18, true));          // white PVC pipe wall
     holeGeos.push(cylG(P.sleeves.id / 2, 0.004, 'y', x, P.t + 0.003, z, 18));                   // dark bore, top …
     holeGeos.push(cylG(P.sleeves.id / 2, 0.004, 'y', x, -0.003, z, 18));                        // … and bottom
   }
-  const sleeveHover = { title: `${P.sleeves.label} · 2″ sch 40 PVC pipe`, sub: `cast through the plank · curb dowels pass through · ${dowelPts.length} per plank` };
+  const sleeveHover = { title: `${P.sleeves.label} · ${P.sleeves.nominal} sch 40 PVC pipe`, sub: `cast through the plank · curb dowels pass through · ${dowelPts.length} per plank` };
   const sleeves = mesh(isSkew ? merge(tubeGeos) : (cache.sleeves ||= merge(tubeGeos)), M.pvc, { cast: false, hover: sleeveHover });
   const sleeveHoles = mesh(isSkew ? merge(holeGeos) : (cache.sleeveHoles ||= merge(holeGeos)), M.dark, { cast: false, hover: sleeveHover });
   g.add(sleeves, sleeveHoles); addLayer('hardware', sleeves); addLayer('hardware', sleeveHoles);
@@ -1120,7 +1124,7 @@ function buildPlank(spec) {
   feat.push({ p: [xsLong.top[xsLong.top.length - 1] ?? 0, yTopLong, halfW - 1.2], text: 'Top mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} both ways · ${fmtIn(R.matGap)} clear between mats` });
   if (pinsMesh) feat.push({ p: [(isSkew ? reg.xb0 : P.w / 2) + P.pins.proj, P.t / 2, pinZ[1]], text: `¾″Ø pins ×${P.pins.count}`, sub: `${fmtIn(P.pins.proj)} projection · click into the next plank` });
   if (holesMesh) feat.push({ p: [(isSkew ? reg.xa0 : -P.w / 2), P.t / 2, pinZ[2]], text: `Pin holes ×${P.pins.count}`, sub: `${fmtIn(P.pins.holeDia)}Ø · female side`, left: true });
-  if (dowelPts.length) feat.push({ p: [dowelPts[0].x, P.t, dowelPts[0].z], text: `${P.sleeves.label}`, sub: `2″ sleeve for the curb dowel · ${dowelPts.length} per plank`, left: dowelPts[0].z < 0 });
+  if (dowelPts.length) feat.push({ p: [dowelPts[0].x, P.t, dowelPts[0].z], text: `${P.sleeves.label}`, sub: `${P.sleeves.nominal} sleeve for the curb dowel · ${dowelPts.length} per plank`, left: dowelPts[0].z < 0 });
   if (tabs.length) { const t = tabs[Math.floor(tabs.length / 2)]; feat.push({ p: [t.x, 0, boltZ(t.k, t.s)], text: `${P.inserts.label} ×${tabs.length}`, sub: 'cast-in threaded insert for the hold-down bolt' }); }
   rec.part = registerPart({ kind: spec.kind, label: spec.label, sub: spec.sub, group: g, cat: 'planks', index: spec.index, features: feat, rec,
     lines: [`<b>${spec.dimText}</b>`, `Concrete <b>${fmtN(volume / 27, 2)} cy</b> (${fmtN(volume, 1)} cf) · ~<b>${fmtN(weight)} lb</b> pick weight`, `Rebar: bottom mat ${rb.bottomCount} bars · top mat ${rb.topCount} bars · <b>${fmtN(rb.bottomLen + rb.topLen)} lf</b> ${R.label} (${fmtN((rb.bottomLen + rb.topLen) * R.plf)} lb)`, `Covers: ${fmtIn(R.bottomCover)} bottom · ${fmtIn(R.matGap)} between mats · ${fmtIn(topCoverActual)} top`, `${pinsMesh ? `${P.pins.count} pins` : 'no pins'} · ${holesMesh ? `${P.pins.count} holes` : 'no holes'} · ${tabs.length} helicoil inserts · ${dowelPts.length} PVC sleeves`],
@@ -1228,7 +1232,7 @@ const curbWeight = curbLen * curbArea * P.unitWeightPcf;
 const curbSlotsAll = [];
 for (const rec of allPlanks) for (const sl of rec.slots) curbSlotsAll.push({ rec, sl });
 const dLen = C.dowel.embed + P.t + C.dowel.projBelowPlank;
-const dowelLocal = side => [-1, 1].map(sx => ({ x: sx * (curbLen / 2 - C.dowel.endInset), z: side * (C.w / 2 - C.dowel.inset) }));
+const dowelLocal = side => dowelXs().map(dx => ({ x: dx, z: side * (C.w / 2 - C.dowel.inset) }));
 const dowelGeoFor = {}, washerGeoFor = {}, weldGeoFor = {};
 for (const side of [-1, 1]) {
   const dp = dowelLocal(side);
@@ -1249,7 +1253,7 @@ for (const side of [-1, 1]) {
 }
 const _c2 = new THREE.Color();
 curbsGroup.add(curbFam.mesh);
-const curbHover = { title: 'Precast curb', sub: `${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)} · 45° top haunches · ~${fmtN(curbWeight)} lb · drops over 2 sleeves` };
+const curbHover = { title: 'Precast curb', sub: `${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)} · 45° top haunches · ~${fmtN(curbWeight)} lb · drops over ${C.dowel.count} sleeves` };
 const dowelHover = { title: `${C.dowel.label}s (${C.dowel.count})`, sub: `cast in the curb · ${fmtIn(C.dowel.embed)} embedded · drop through the plank sleeves` };
 const washerHover = { title: 'Field-welded washer', sub: `${fmtIn(C.washer.od)}Ø welded to the dowel under the plank · cut to replace the curb` };
 let curbNo = { '-1': 0, '1': 0 };
@@ -1266,7 +1270,7 @@ for (const { rec, sl } of curbSlotsAll) {
   curbs.push(cr);
   const dp = dowelLocal(sl.side);
   cr.part = registerPart({ kind: 'curb', skewDep: rec.isSkew, label: `Curb ${sl.side > 0 ? 'N' : 'S'}${n}`, sub: 'precast curb segment · replaceable', cat: 'curbs', index: n, objs: [conc, dowels, washers], isoObjs: () => [conc, dowels, washers, welds],
-    lines: [`<b>${fmtFtIn(curbLen)} × ${fmtIn(C.w)} wide × ${fmtIn(C.h)} high</b> · ~<b>${fmtN(curbWeight)} lb</b>`, `<b>${fmtIn(C.haunch)} × 45° haunches</b> on both top edges — releases cleanly from the form`, `(${C.dowel.count}) <b>${C.dowel.label}s</b> cast in, ${fmtIn(C.dowel.embed)} embedded, project ${fmtIn(P.t + C.dowel.projBelowPlank)} below`, `Dowels drop through the plank's <b>${P.sleeves.label}s</b> (2″ sleeves)`, `<b>${fmtIn(C.washer.od)}Ø washer welded</b> to each dowel in the field, under the plank`, `Cut the weld → lift the curb → drop in a new one`],
+    lines: [`<b>${fmtFtIn(curbLen)} × ${fmtIn(C.w)} wide × ${fmtIn(C.h)} high</b> · ~<b>${fmtN(curbWeight)} lb</b>`, `<b>${fmtIn(C.haunch)} × 45° haunches</b> on both top edges — releases cleanly from the form`, `(${C.dowel.count}) <b>${C.dowel.label}s</b> cast in, ${fmtIn(C.dowel.embed)} embedded, project ${fmtIn(P.t + C.dowel.projBelowPlank)} below`, `Dowels drop through the plank's <b>${P.sleeves.label}s</b> (${P.sleeves.nominal} sleeves)`, `<b>${fmtIn(C.washer.od)}Ø washer welded</b> to each dowel in the field, under the plank`, `Cut the weld → lift the curb → drop in a new one`],
     viewDir: new THREE.Vector3(-0.9, 0.55, sl.side * 1.3), pad: 2.4, ghosts: () => [rec.concrete],
     features: [{ inst: conc, off: [0, C.h, 0], text: 'Curb segment', sub: `${fmtFtIn(curbLen)} × ${fmtIn(C.w)} × ${fmtIn(C.h)} · ${fmtIn(C.haunch)} 45° top haunches` }, { inst: conc, off: [dp[0].x, -P.t / 2, dp[0].z], text: `${C.dowel.label}`, sub: 'through the PVC sleeve', left: true }, { inst: conc, off: [dp[1].x, -P.t - C.washer.t, dp[1].z], text: 'Welded washer', sub: 'field weld · replaceable curb' }] });
   conc.part = dowels.part = washers.part = welds.part = cr.part;
@@ -2058,7 +2062,7 @@ function renderQuantities() {
         ${row('Helicoil inserts', hdN, `${fmtIn(P.inserts.dia)}Ø × ${fmtIn(P.inserts.depth)} in the plank underside`, 'cast in')}
         ${row('Hold-down tabs', hdN, `${fmtIn(H.tab.w)} × ${fmtIn(H.tab.l)} × ${fmtIn(H.tab.t)} galvanized plate with ${fmtIn(G.tf - 1 / 16 * IN)} welded stand-off`, 'loose')}
         ${row('Hold-down bolts', hdN, `${fmtIn(H.bolt.dia)}Ø × ${fmtIn(H.bolt.len)} hex + washer`, 'loose')}
-        ${row(`${P.sleeves.label}s (sleeves)`, sleeveN, `2″ sch 40 PVC pipe, ${fmtIn(P.t)} long through the plank`, 'cast in')}
+        ${row(`${P.sleeves.label}s (sleeves)`, sleeveN, `${P.sleeves.nominal} sch 40 PVC pipe (${fmtIn(P.sleeves.od)} OD), ${fmtIn(P.t)} long through the plank`, 'cast in')}
         ${row('Curb dowels', sleeveN, `${C.dowel.label} × ${fmtIn(C.dowel.embed + P.t + C.dowel.projBelowPlank)} · ${fmtIn(C.dowel.embed)} embedded`, 'cast in curb')}
         ${row('Dowel washers', sleeveN, `${fmtIn(C.washer.od)}Ø × ${fmtIn(C.washer.t)} · field welded below the plank`, 'field')}
       </tbody></table></div>
@@ -2086,7 +2090,7 @@ function renderQuantities() {
         <li>Hold-downs: a tab on <b>${H.layout === 'both' ? 'both sides' : 'alternating sides'}</b> of every interior girder under every plank${H.outerGirder === 'inner' ? ', inner lip only on the two outer girders (keeps the outer lip clear of the curb sleeves)' : ''} (${hdN} total). Tab ${fmtIn(H.tab.t)} thick with a welded stand-off so it levers against the ${fmtIn(G.tf)} flange; ${fmtIn(H.bolt.dia)}Ø bolt, ${fmtIn(P.inserts.depth)} insert.</li>
         <li>Pins: ${P.pins.count} per joint at ${fmtFtIn(P.l / P.pins.count)} o.c., ${fmtIn(P.pins.proj)} projection. ${E.enabled ? `All ${nStd} standard planks are identical (pins one side, holes the other); the exposed pins/holes at the ends mate with the skew planks.` : `${nStd - 2} standard planks are identical (pins one side, holes the other); the two end planks are cast without pins/holes on their exposed edge.`}</li>
         <li>Rebar: bottom mat main bars lowest, ${fmtIn(R.bottomCover)} + ${fmtIn(R.matGap)} + ${fmtIn(R.topCover)} as given leaves ${fmtIn(topCoverActual)} at the top of a ${fmtIn(P.t)} plank.</li>
-        <li>Curb dowels: ${C.dowel.label}s ${fmtIn(C.dowel.inset)} in from the outer face through 2″ sleeves; ${fmtIn(C.washer.od)}Ø washer welded under the plank. Welding to the dowel means the dowels should be <b>ASTM A706</b> (weldable) rather than A615.</li>
+        <li>Curb dowels: ${C.dowel.label}s ${fmtIn(C.dowel.inset)} in from the outer face through ${P.sleeves.nominal} PVC sleeves at ${dowelXs().map(x => fmtIn(x)).join(' / ')} along each curb; ${fmtIn(C.washer.od)}Ø washer welded under the plank. Welding to the dowel means the dowels should be <b>ASTM A706</b> (weldable) rather than A615.</li>
         <li>Skew: ${skewDeg.toFixed(1)}° (girders step ${fmtFtIn(G.staggerPerBeam)}). ${E.enabled ? `The square plank field leaves a triangular gap at each abutment; shown here as two precast skew planks (${fmtFtIn(E.minLength)} short edge).` : `The ${fmtFtIn(2 * deckHalfL)} square deck simply runs past the skewed abutments; the triangle between the deck edge and the roadway is graded approach (by others).`} Confirm the end treatment and bearing on the abutment top / approach.</li>
         <li>Wearing surface, cross-slope (the plan shows a 2% crown), guardrail and bridge markers are not modelled.</li>
       </ul></div>
