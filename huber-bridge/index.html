@@ -575,8 +575,10 @@ const CONFIG = {
     sleeves: { label: 'PVC channel', nominal: '1½″', od: 1.9 * IN, id: 1.61 * IN },  // 1-1/2" sch 40 PVC pipe cast through the plank (the #6 dowel drops through the 1.61" bore)
   },
   holddown: {
-    layout: 'both',        // 'both' = a tab each side of every girder flange · 'alternate' = one per girder, alternating sides
-    outerGirder: 'inner',  // outer girders: 'inner' lip only (keeps the outer lip clear of the curb sleeves) · 'both'
+    // Helicoil pattern per plank: which girder lips get a tab, repeated in rows edgeDist in from each long (joint) edge.
+    // Default = 8 per plank: the outer lip of each outermost girder (2 × 2) + both lips of the middle girder (4).
+    pattern: [{ girder: 'outer', lip: 'outer' }, { girder: 'middle', lip: 'both' }],
+    edgeDist: 12 * IN,     // helicoil rows 12" in from each long edge of the plank (24" apart on a 4' plank)
     tab: { w: 6 * IN, l: 12 * IN, t: 0.75 * IN, underFlange: 4 * IN, holeFromEnd: 2.5 * IN, standoffOD: 1.75 * IN },
     bolt: { dia: 0.75 * IN, len: 3.5 * IN, headH: 0.5 * IN, headAF: 1.125 * IN, washerOD: 1.5 * IN, washerT: 0.125 * IN },
   },
@@ -1025,22 +1027,19 @@ function plankRebar(reg, spec) {
   return { bottomGeo: merge(bottom.map(b => b.geo)), topGeo: merge(top.map(b => b.geo)), bottomCount: bottom.length, topCount: top.length, bottomLen: sum(bottom), topLen: sum(top) };
 }
 
-function holddownSides(i, k) {
-  const outer = k === 0 ? -1 : (k === G.count - 1 ? 1 : 0);        // which lip of this girder faces the deck edge
-  if (H.layout === 'alternate') { const s = ((i + k) % 2) ? 1 : -1; return (outer && H.outerGirder === 'inner' && s === outer) ? [-outer] : [s]; }
-  if (outer && H.outerGirder === 'inner') return [-outer];
-  return [-1, 1];
+// resolve CONFIG.holddown.pattern into concrete { girder index, lip side } pairs (lip side −1 = toward −z)
+function holddownLips() {
+  const n = G.count, mid = Math.floor((n - 1) / 2), out = [];
+  for (const p of H.pattern) {
+    const ks = p.girder === 'outer' ? [0, n - 1] : p.girder === 'middle' ? [mid] : p.girder === 'all' ? [...Array(n).keys()] : [].concat(p.girder);
+    for (const k of ks) {
+      const outerSide = k === 0 ? -1 : (k === n - 1 ? 1 : 0);
+      const sides = p.lip === 'both' ? [-1, 1] : p.lip === 'outer' ? [outerSide || 1] : [-(outerSide || 1)];
+      for (const s of sides) if (!out.some(o => o.k === k && o.s === s)) out.push({ k, s });
+    }
+  }
+  return out;
 }
-
-// Where can a tab go under this plank on girder k? Returns local x or null.
-function tabX(worldX, reg, k, preferredLocal) {
-  const [g0, g1] = girderRange(k), z = girderZ(k);
-  const lo = Math.max(worldX + reg.xa(z), g0) + H.tab.w / 2 + 1 * IN;
-  const hi = Math.min(worldX + reg.xb(z), g1) - H.tab.w / 2 - 1 * IN;
-  if (hi - lo < 0) return null;
-  return Math.min(hi, Math.max(lo, worldX + preferredLocal)) - worldX;
-}
-
 // dowel positions along a curb, relative to its centre
 const dowelXs = () => { const n = Math.max(1, C.dowel.count), a = curbLen / 2 - C.dowel.endInset; return n === 1 ? [0] : Array.from({ length: n }, (_, i) => -a + i * (2 * a) / (n - 1)); };
 // Shift a symmetric bar layout along the plank (staying inside the edge cover) so the bars keep the most
@@ -1118,12 +1117,16 @@ function buildPlank(spec) {
   const sleeves = mesh(isSkew ? merge(tubeGeos) : (cache.sleeves ||= merge(tubeGeos)), M.pvc, { cast: false, hover: sleeveHover });
   const sleeveHoles = mesh(isSkew ? merge(holeGeos) : (cache.sleeveHoles ||= merge(holeGeos)), M.dark, { cast: false, hover: sleeveHover });
   g.add(sleeves, sleeveHoles); addLayer('hardware', sleeves); addLayer('hardware', sleeveHoles);
-  // hold-down positions → helicoil inserts
+  // hold-down positions → helicoil inserts (only where the girder flange is actually under the tab)
   const tabs = [];
-  for (let k = 0; k < G.count; k++) {
-    const x = tabX(worldX, reg, k, spec.tabPreferredLocal);
-    if (x === null) continue;
-    for (const s of holddownSides(spec.index, k)) tabs.push({ x, k, s });
+  for (const { k, s } of holddownLips()) {
+    const z = girderZ(k), [g0, g1] = girderRange(k);
+    for (const xr of [-P.w / 2 + H.edgeDist, P.w / 2 - H.edgeDist]) {
+      const xw = worldX + xr;
+      if (xw - H.tab.w / 2 < g0 || xw + H.tab.w / 2 > g1) continue;                       // no steel under this row
+      if (xr - H.tab.w / 2 < reg.xa(z) || xr + H.tab.w / 2 > reg.xb(z)) continue;         // outside a trapezoid plank
+      tabs.push({ x: xr, k, s });
+    }
   }
   const insertGeos = tabs.map(t => cylG(P.inserts.dia / 2, P.inserts.depth + 0.003, 'y', t.x, P.inserts.depth / 2 - 0.0015, boltZ(t.k, t.s), 12));
   const inserts = mesh(merge(insertGeos), M.brass, { cast: false, hover: { title: `${P.inserts.label} (${tabs.length})`, sub: `${fmtIn(P.inserts.dia)}Ø × ${fmtIn(P.inserts.depth)} deep · cast in the underside · receives the hold-down bolt` } });
@@ -2101,7 +2104,7 @@ function renderQuantities() {
 
       <div class="q-card"><h3>Assumptions to confirm</h3><ul class="q-note">
         <li>Curbs: <b>${fmtFtIn(curbLen)}</b> long (${curbsPerPlankSide} per plank per side → <b>${curbN}</b>), <b>${fmtIn(C.w)}</b> wide assumed, outer face flush with the plank edge, ${fmtIn(C.haunch)} 45° haunches on the top edges for form release.</li>
-        <li>Hold-downs: a tab on <b>${H.layout === 'both' ? 'both sides' : 'alternating sides'}</b> of every interior girder under every plank${H.outerGirder === 'inner' ? ', inner lip only on the two outer girders (keeps the outer lip clear of the curb sleeves)' : ''} (${hdN} total). Tab ${fmtIn(H.tab.t)} thick with a welded stand-off so it levers against the ${fmtIn(G.tf)} flange; ${fmtIn(H.bolt.dia)}Ø bolt, ${fmtIn(P.inserts.depth)} insert.</li>
+        <li>Hold-downs: <b>${holddownLips().length * 2} helicoils per plank</b> — the outer lip of each outermost girder and both lips of the middle girder, in two rows ${fmtIn(H.edgeDist)} in from the long edges (${hdN} tabs total; end planks get only the ones with steel under them). Helicoil = girder CL ± ${fmtIn(G.bf / 2 - H.tab.underFlange + H.tab.l - H.tab.holeFromEnd)}. Tab ${fmtIn(H.tab.t)} thick with a welded stand-off so it levers against the ${fmtIn(G.tf)} flange; ${fmtIn(H.bolt.dia)}Ø bolt, ${fmtIn(P.inserts.depth)} insert.</li>
         <li>Pins: ${P.pins.count} per joint at ${fmtFtIn(P.l / P.pins.count)} o.c., ${fmtIn(P.pins.proj)} projection. ${E.enabled ? `All ${nStd} standard planks are identical (pins one side, holes the other); the exposed pins/holes at the ends mate with the skew planks.` : `${nStd - 2} standard planks are identical (pins one side, holes the other); the two end planks are cast without pins/holes on their exposed edge.`}</li>
         <li>Rebar: bottom mat main bars lowest, ${fmtIn(R.bottomCover)} + ${fmtIn(R.matGap)} + ${fmtIn(R.topCover)} as given leaves ${fmtIn(topCoverActual)} at the top of a ${fmtIn(P.t)} plank.</li>
         <li>Curb dowels: ${C.dowel.label}s ${fmtIn(C.dowel.inset)} in from the outer face through ${P.sleeves.nominal} PVC sleeves at ${dowelXs().map(x => fmtIn(x)).join(' / ')} along each curb; ${fmtIn(C.washer.od)}Ø washer welded under the plank. Welding to the dowel means the dowels should be <b>ASTM A706</b> (weldable) rather than A615.</li>
