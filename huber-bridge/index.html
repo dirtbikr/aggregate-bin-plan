@@ -555,7 +555,7 @@ const CONFIG = {
   plank: {
     count: 20,               // 20 × 4' = 80' of square deck; the end planks run past the girder ends onto the abutment tops / approach
     w: 4,                 // width along the bridge
-    l: 17 + 4 / 12,       // 17'-4" across the bridge (spans all five girders; 15'-8" clear between 10" curbs)
+    l: 17 + 8 / 12,       // 17'-8" across the bridge (spans all five girders; 16'-0" clear between the 10" curbs)
     t: 10 * IN,           // thickness
     chamfer: 0.5 * IN,
     unitWeightPcf: 150,
@@ -1017,11 +1017,11 @@ function plankRebar(reg, spec) {
     return { geo: cylG(r, hi - lo, 'z', x, y, (lo + hi) / 2, 8), len: hi - lo };
   };
   const barX = (z, y) => { const x0 = reg.xa(z) + c, x1 = reg.xb(z) - c; if (x1 - x0 < 0.75) return null; return { geo: cylG(r, x1 - x0, 'x', (x0 + x1) / 2, y, z, 8), len: x1 - x0 }; };
-  const xsLong = spec.xPositions, zs = positionsSym(P.l, R.bottomTransOC, c);
+  const xsLong = spec.xPositions, zs = spec.zBot || positionsSym(P.l, R.bottomTransOC, c);
   const bottom = [], top = [];
   for (const x of xsLong.bottom) { const b = barZ(x, yBotLong); if (b) bottom.push(b); }
   for (const z of zs) { const b = barX(z, yBotTrans); if (b) bottom.push(b); }
-  for (const z of positionsSym(P.l, R.topTransOC, c)) { const b = barX(z, yTopTrans); if (b) top.push(b); }
+  for (const z of (spec.zTop || positionsSym(P.l, R.topTransOC, c))) { const b = barX(z, yTopTrans); if (b) top.push(b); }
   for (const x of xsLong.top) { const b = barZ(x, yTopLong); if (b) top.push(b); }
   const sum = list => list.reduce((a, b) => a + b.len, 0);
   return { bottomGeo: merge(bottom.map(b => b.geo)), topGeo: merge(top.map(b => b.geo)), bottomCount: bottom.length, topCount: top.length, bottomLen: sum(bottom), topLen: sum(top) };
@@ -1081,7 +1081,10 @@ function buildPlank(spec) {
     ? { bottom: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.bottomLongOC),
         top: positionsFrom(reg.xa0 === 0 ? R.edgeCover + r : reg.xb0 - R.edgeCover - r, reg.xa0 === 0 ? Math.max(reg.xb(-halfW), reg.xb(halfW)) : Math.min(reg.xa(-halfW), reg.xa(halfW)), R.topLongOC) }
     : { bottom: clearOf(P.w, R.bottomLongOC, R.edgeCover, sleeveXs), top: clearOf(P.w, R.topLongOC, R.edgeCover, sleeveXs) };
-  const rb = isSkew ? plankRebar(reg, { xPositions: xsLong }) : (cache.rebar ||= plankRebar(reg, { xPositions: xsLong }));
+  // transverse bars slide (inside the end cover) to clear the curb-sleeve line near each end
+  const sleeveZ = [-(halfW - C.setback - C.dowel.inset), halfW - C.setback - C.dowel.inset];
+  const zTrans = { zBot: clearOf(P.l, R.bottomTransOC, R.edgeCover, sleeveZ), zTop: clearOf(P.l, R.topTransOC, R.edgeCover, sleeveZ) };
+  const rb = isSkew ? plankRebar(reg, { xPositions: xsLong }) : (cache.rebar ||= plankRebar(reg, { xPositions: xsLong, ...zTrans }));
   const botMesh = mesh(rb.bottomGeo, M.rebarBottom, { cast: false, hover: { title: 'Bottom rebar mat', sub: `${R.label} @ ${fmtIn(R.bottomLongOC)} o.c. with the length · ${R.label} @ ${fmtIn(R.bottomTransOC)} o.c. across · ${fmtIn(R.bottomCover)} bottom cover` } });
   const topMesh = mesh(rb.topGeo, M.rebarTop, { cast: false, hover: { title: 'Top rebar mat', sub: `${R.label} @ ${fmtIn(R.topLongOC)} o.c. both ways · ${fmtIn(R.matGap)} clear above the bottom mat · ${fmtIn(topCoverActual)} top cover` } });
   botMesh.userData.rebar = 'bottom'; topMesh.userData.rebar = 'top';
